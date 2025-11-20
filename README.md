@@ -1,0 +1,216 @@
+# Proof Verification Helper
+
+An intelligent web application designed to assist mathematicians and computer scientists working with formal proof verification systems, particularly Lean 4. The application leverages AI and interactive visualization to help users understand, debug, and construct formal proofs more efficiently.
+
+## Features
+
+### Core Features
+
+- **Interactive Proof Editor**: Write and edit Lean 4 code with syntax highlighting and real-time parsing
+- **Proof Visualization**: Interactive dependency graphs showing theorem → lemma dependencies
+- **AI-Powered Suggestions**: Get intelligent recommendations for lemmas, tactics, and proof steps
+- **Proof Search**: Search and explore theorems from mathlib and your own proofs
+- **Step-by-Step Proof Builder**: Build proofs incrementally with guided suggestions
+- **Learning & Tutorials**: Interactive tutorials and example proofs
+- **User Library**: Save and organize your proofs
+- **Authentication**: User accounts with secure authentication
+
+## Tech Stack
+
+### Frontend
+- React 18 with TypeScript
+- Vite for build tooling
+- Monaco Editor for code editing
+- Cytoscape.js for graph visualization
+- Tailwind CSS for styling
+- Zustand for state management
+- React Router for navigation
+
+### Backend
+- Node.js with TypeScript
+- Express.js for REST API
+- SQLite (better-sqlite3) for database
+- JWT for authentication
+- Intelligent rule-based AI suggestions (free, no API key required)
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ and npm
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd proof-verification-helper
+```
+
+2. Install dependencies:
+```bash
+npm run install:all
+```
+
+3. Set up environment variables:
+
+Create `backend/.env`:
+```env
+PORT=5000
+JWT_SECRET=your-secret-key-change-in-production
+DATABASE_PATH=./data/proofs.db
+```
+
+4. Start the development servers:
+
+```bash
+npm run dev
+```
+
+This will start:
+- Backend API on http://localhost:5000
+- Frontend on http://localhost:3000
+
+### Building for Production
+
+```bash
+npm run build
+```
+
+The built files will be in:
+- `frontend/dist/` - Frontend build
+- `backend/dist/` - Backend build
+
+## Project Structure
+
+```
+proof-verification-helper/
+├── frontend/           # React frontend application
+│   ├── src/
+│   │   ├── api/       # API client functions
+│   │   ├── components/ # React components
+│   │   ├── pages/     # Page components
+│   │   ├── store/     # State management
+│   │   └── App.tsx    # Main app component
+│   └── package.json
+├── backend/            # Node.js backend API
+│   ├── src/
+│   │   ├── routes/    # API routes
+│   │   ├── db/        # Database setup
+│   │   ├── services/  # Business logic
+│   │   ├── middleware/# Express middleware
+│   │   └── index.ts   # Server entry point
+│   └── package.json
+└── package.json        # Root package.json
+```
+
+## API Endpoints
+
+### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login user
+
+### Proofs
+- `POST /api/proofs/parse` - Parse Lean code
+- `POST /api/proofs` - Create new proof
+- `GET /api/proofs/:id` - Get proof by ID
+- `PUT /api/proofs/:id` - Update proof
+- `DELETE /api/proofs/:id` - Delete proof
+- `POST /api/proofs/:id/analyze` - Analyze proof structure
+- `GET /api/proofs/:id/dependencies` - Get dependency graph
+- `POST /api/proofs/:id/suggestions` - Get AI suggestions
+- `POST /api/proofs/:id/verify` - Verify proof
+
+### Theorems
+- `GET /api/theorems/search` - Search theorems
+- `GET /api/theorems/:id` - Get theorem by ID
+- `GET /api/theorems/:id/dependents` - Get dependents
+
+### User
+- `GET /api/user/proofs` - Get user's proofs
+- `POST /api/user/proofs/:id/save` - Save proof to library
+
+## Usage
+
+### Creating a Proof
+
+1. Navigate to the Editor page
+2. Enter your Lean 4 code in the editor
+3. The app will automatically parse and analyze your proof
+4. View the dependency graph and AI suggestions
+5. Save your proof (requires login)
+
+### Using AI Suggestions
+
+1. Create or open a proof
+2. The suggestions panel will show AI-powered recommendations
+3. Click the checkmark icon to apply a suggestion
+4. Suggestions are ranked by confidence score
+
+### Visualizing Proofs
+
+1. Open a proof in the editor
+2. The visualization panel shows the dependency graph
+3. Click on nodes to see details
+4. The graph is interactive - zoom and pan to explore
+
+### Searching Theorems
+
+1. Go to the Search page
+2. Enter search terms or use filters
+3. Browse results and click to view details
+
+## Development
+
+### Running Tests
+
+(Add test commands when tests are added)
+
+### Code Style
+
+The project uses:
+- ESLint for linting
+- TypeScript for type checking
+- Prettier (recommended) for formatting
+
+## Configuration
+
+### Database
+
+The app uses SQLite by default. To use PostgreSQL:
+
+1. Update `backend/src/db/index.ts` to use PostgreSQL
+2. Update connection string in environment variables
+
+### AI Suggestions
+
+The application uses an intelligent rule-based suggestion system that analyzes your proof code and provides context-aware recommendations. This system is:
+- **100% Free** - No API keys or external services required
+- **High Quality** - Uses Lean 4 knowledge base and pattern matching
+- **Context-Aware** - Analyzes proof structure, errors, and goals
+- **Always Available** - Works offline and doesn't require internet
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Future Enhancements
+
+- Integration with Lean 4 language server for real-time verification
+- Support for other proof assistants (Coq, Isabelle)
+- Advanced proof refactoring tools
+- Collaborative real-time editing
+- Proof templates library
+- Mobile app support
+
+## Support
+
+For issues and questions, please open an issue on GitHub.
+
