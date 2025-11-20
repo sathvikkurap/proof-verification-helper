@@ -29,7 +29,9 @@ export default function SuggestionsPanel({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    loadSuggestions();
+    if (proofId) {
+      loadSuggestions();
+    }
   }, [proofId, currentGoal, errorMessage]);
 
   const loadSuggestions = async () => {

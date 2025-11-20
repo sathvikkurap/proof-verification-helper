@@ -107,20 +107,26 @@ router.get('/:id', optionalAuth, (req: AuthRequest, res) => {
 });
 
 // Update proof
-router.put('/:id', authenticateToken, (req: AuthRequest, res) => {
+router.put('/:id', optionalAuth, (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { name, code } = req.body;
     const db = getDatabase();
 
-    // Check ownership
+    // Check if proof exists
     const proof = db.prepare('SELECT * FROM proofs WHERE id = ?').get(id) as any;
     if (!proof) {
       return res.status(404).json({ error: 'Proof not found' });
     }
 
-    if (proof.user_id && proof.user_id !== req.userId) {
-      return res.status(403).json({ error: 'Not authorized' });
+    // Check ownership only if proof has a user_id
+    if (proof.user_id) {
+      if (!req.userId) {
+        return res.status(401).json({ error: 'Authentication required to update this proof' });
+      }
+      if (proof.user_id !== req.userId) {
+        return res.status(403).json({ error: 'Not authorized' });
+      }
     }
 
     const parsed = parseLeanCode(code || proof.code);

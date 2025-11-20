@@ -204,39 +204,39 @@ theorem example : True := by trivial
         </div>
 
         <div className="space-y-6">
-          {showSuggestions && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-semibold">AI Suggestions</h2>
-                {!currentProof?.id && (
-                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                    Save proof to get suggestions
-                  </span>
-                )}
-              </div>
-              {currentProof?.id ? (
-                <SuggestionsPanel
-                  proofId={currentProof.id}
-                  errorMessage={parsed?.errors?.[0]?.message}
-                  onApply={(suggestion) => {
-                    // Apply suggestion to code
-                    const newCode = code + '\n  ' + suggestion.content;
-                    setCode(newCode);
-                    handleCodeChange(newCode);
-                    const msg = document.createElement('div');
-                    msg.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-                    msg.textContent = `✓ Applied: ${suggestion.content}`;
-                    document.body.appendChild(msg);
-                    setTimeout(() => msg.remove(), 2000);
-                  }}
-                />
-              ) : (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center text-gray-500">
-                  <p className="text-sm">Save your proof to get AI-powered suggestions</p>
-                </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-semibold">AI Suggestions</h2>
+              {!currentProof?.id && (
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                  Save proof to get suggestions
+                </span>
               )}
             </div>
-          )}
+            {currentProof?.id ? (
+              <SuggestionsPanel
+                proofId={currentProof.id}
+                errorMessage={parsed?.errors?.[0]?.message}
+                currentGoal={currentGoal}
+                onApply={(suggestion) => {
+                  // Apply suggestion to code
+                  const newCode = code + '\n  ' + suggestion.content;
+                  setCode(newCode);
+                  handleCodeChange(newCode);
+                  const msg = document.createElement('div');
+                  msg.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+                  msg.textContent = `✓ Applied: ${suggestion.content}`;
+                  document.body.appendChild(msg);
+                  setTimeout(() => msg.remove(), 2000);
+                }}
+              />
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center text-gray-500">
+                <p className="text-sm">Save your proof to get AI-powered suggestions</p>
+                <p className="text-xs mt-2">Click the 'Save' button above to create a proof</p>
+              </div>
+            )}
+          </div>
 
           {parsed && (
             <div className="bg-white border border-gray-300 rounded-lg p-4">

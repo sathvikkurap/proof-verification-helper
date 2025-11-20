@@ -1,5 +1,6 @@
 import { Suggestion } from '../types';
 import { parseLeanCode } from '../utils/leanParser';
+import { getOllamaSuggestions, checkOllamaAvailability } from './ollamaService';
 
 export interface AIContext {
   proofCode: string;
@@ -79,8 +80,46 @@ const LEAN_KNOWLEDGE_BASE = {
 };
 
 export async function getAISuggestions(context: AIContext): Promise<Suggestion[]> {
+  // Auto-detect Ollama: try it automatically, fall back gracefully if not available
+  // This makes it work seamlessly for non-technical users - no configuration needed!
+  const ollamaAvailable = await checkOllamaAvailability();
+  
+  if (ollamaAvailable) {
+    try {
+      const ollamaSuggestions = await getOllamaSuggestions(context);
+      if (ollamaSuggestions.length > 0) {
+        // Combine with rule-based for best results
+        const ruleBased = getIntelligentSuggestions(context);
+        // Merge and deduplicate, prioritizing Ollama
+        return mergeSuggestions(ollamaSuggestions, ruleBased);
+      }
+    } catch (error) {
+      // Silently fall back to rule-based - works great even without Ollama
+      console.log('Ollama unavailable, using rule-based suggestions');
+    }
+  }
+  
   // Use intelligent rule-based system (free and high quality)
+  // This always works, even without Ollama - perfect for non-technical users!
   return getIntelligentSuggestions(context);
+}
+
+function mergeSuggestions(ollama: Suggestion[], ruleBased: Suggestion[]): Suggestion[] {
+  const merged: Suggestion[] = [...ollama];
+  const seen = new Set(ollama.map(s => s.content.toLowerCase()));
+  
+  // Add rule-based suggestions that aren't duplicates
+  for (const suggestion of ruleBased) {
+    if (!seen.has(suggestion.content.toLowerCase())) {
+      merged.push(suggestion);
+      seen.add(suggestion.content.toLowerCase());
+    }
+  }
+  
+  // Sort by confidence and return top 5
+  return merged
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, 5);
 }
 
 function getIntelligentSuggestions(context: AIContext): Suggestion[] {

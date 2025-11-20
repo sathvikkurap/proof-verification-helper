@@ -35,15 +35,26 @@ An intelligent web application designed to assist mathematicians and computer sc
 
 ## Getting Started
 
-### Prerequisites
+### For Non-Technical Users (Easiest)
+
+**Download the standalone application:**
+- macOS: Download `.dmg` file, drag to Applications, and launch
+- Windows: Download `.exe` installer, run and follow wizard
+- Linux: Download `.AppImage`, make executable, and run
+
+**That's it!** The app runs everything automatically - no configuration needed!
+
+### For Developers
+
+#### Prerequisites
 
 - Node.js 18+ and npm
 
-### Installation
+#### Installation
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/sathvikkurap/proof-verification-helper.git
 cd proof-verification-helper
 ```
 
@@ -52,16 +63,7 @@ cd proof-verification-helper
 npm run install:all
 ```
 
-3. Set up environment variables:
-
-Create `backend/.env`:
-```env
-PORT=5000
-JWT_SECRET=your-secret-key-change-in-production
-DATABASE_PATH=./data/proofs.db
-```
-
-4. Start the development servers:
+3. Start the development servers:
 
 ```bash
 npm run dev
@@ -70,6 +72,14 @@ npm run dev
 This will start:
 - Backend API on http://localhost:5000
 - Frontend on http://localhost:3000
+
+#### Building Standalone App
+
+```bash
+npm run build:app
+```
+
+This creates a standalone application in `electron/dist/`
 
 ### Building for Production
 
@@ -184,11 +194,27 @@ The app uses SQLite by default. To use PostgreSQL:
 
 ### AI Suggestions
 
-The application uses an intelligent rule-based suggestion system that analyzes your proof code and provides context-aware recommendations. This system is:
-- **100% Free** - No API keys or external services required
-- **High Quality** - Uses Lean 4 knowledge base and pattern matching
-- **Context-Aware** - Analyzes proof structure, errors, and goals
-- **Always Available** - Works offline and doesn't require internet
+The application uses an **intelligent hybrid AI system**:
+
+1. **Auto-Detects Ollama** (if installed):
+   - Uses local LLM for better suggestions
+   - 100% free, private, and offline
+   - Automatically enabled if Ollama is running
+   - No configuration needed!
+
+2. **Rule-Based Fallback**:
+   - Always works, even without Ollama
+   - High-quality suggestions using Lean 4 knowledge base
+   - Instant responses
+   - Perfect for non-technical users
+
+**For best results (optional):**
+- Install Ollama: `brew install ollama` (or download from ollama.com)
+- Pull a model: `ollama pull llama3.2`
+- Start Ollama: `ollama serve`
+- The app automatically detects and uses it!
+
+**No configuration needed** - works great out of the box!
 
 ## Contributing
 
