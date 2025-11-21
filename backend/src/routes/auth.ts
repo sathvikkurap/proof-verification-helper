@@ -1,6 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
-import { getDatabase } from '../db';
+import { createUser, findUserByEmail, findUserByEmailOrUsername } from '../db';
 import { generateId } from '../utils/id';
 import { generateToken } from '../middleware/auth';
 
@@ -15,10 +15,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Email, username, and password are required' });
     }
 
-    const db = getDatabase();
-
-    // Check if user exists
-    const existingUser = db.prepare('SELECT id FROM users WHERE email = ? OR username = ?').get(email, username);
+    const existingUser = findUserByEmailOrUsername(email, username);
     if (existingUser) {
       return res.status(400).json({ error: 'User with this email or username already exists' });
     }
@@ -28,10 +25,12 @@ router.post('/register', async (req, res) => {
 
     // Create user
     const id = generateId();
-    db.prepare(`
-      INSERT INTO users (id, email, username, password_hash)
-      VALUES (?, ?, ?, ?)
-    `).run(id, email, username, password_hash);
+    createUser({
+      id,
+      email,
+      username,
+      password_hash,
+    });
 
     const token = generateToken(id);
 
@@ -58,10 +57,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const db = getDatabase();
-
-    // Find user
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email) as any;
+    const user = findUserByEmail(email);
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }

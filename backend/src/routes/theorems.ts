@@ -1,6 +1,5 @@
 import express from 'express';
-import { getDatabase } from '../db';
-import { generateId } from '../utils/id';
+import { getDependentsByTheorem, getTheoremById, searchTheorems } from '../db';
 
 const router = express.Router();
 
@@ -8,35 +7,11 @@ const router = express.Router();
 router.get('/search', (req, res) => {
   try {
     const { q, category, difficulty } = req.query;
-    const db = getDatabase();
-
-    let query = 'SELECT * FROM theorems WHERE 1=1';
-    const params: any[] = [];
-
-    if (q) {
-      query += ' AND (name LIKE ? OR statement LIKE ? OR tags LIKE ?)';
-      const searchTerm = `%${q}%`;
-      params.push(searchTerm, searchTerm, searchTerm);
-    }
-
-    if (category) {
-      query += ' AND category = ?';
-      params.push(category);
-    }
-
-    if (difficulty) {
-      query += ' AND difficulty = ?';
-      params.push(difficulty);
-    }
-
-    query += ' ORDER BY name LIMIT 50';
-
-    const theorems = db.prepare(query).all(...params) as any[];
-
+    const results = searchTheorems(q as string | undefined, category as string | undefined, difficulty as string | undefined);
     res.json({
-      theorems: theorems.map(t => ({
+      theorems: results.map((t) => ({
         ...t,
-        tags: t.tags ? t.tags.split(',') : [],
+        tags: [],
       })),
     });
   } catch (error) {
@@ -49,16 +24,14 @@ router.get('/search', (req, res) => {
 router.get('/:id', (req, res) => {
   try {
     const { id } = req.params;
-    const db = getDatabase();
-
-    const theorem = db.prepare('SELECT * FROM theorems WHERE id = ?').get(id) as any;
+    const theorem = getTheoremById(id);
     if (!theorem) {
       return res.status(404).json({ error: 'Theorem not found' });
     }
 
     res.json({
       ...theorem,
-      tags: theorem.tags ? theorem.tags.split(',') : [],
+      tags: [],
     });
   } catch (error) {
     console.error('Get theorem error:', error);
@@ -70,15 +43,7 @@ router.get('/:id', (req, res) => {
 router.get('/:id/dependents', (req, res) => {
   try {
     const { id } = req.params;
-    const db = getDatabase();
-
-    const dependents = db.prepare(`
-      SELECT DISTINCT p.id, p.name, p.status
-      FROM proofs p
-      JOIN proof_dependencies pd ON p.id = pd.proof_id
-      WHERE pd.depends_on_theorem = ?
-    `).all(id) as any[];
-
+    const dependents = getDependentsByTheorem(id);
     res.json({ dependents });
   } catch (error) {
     console.error('Get dependents error:', error);

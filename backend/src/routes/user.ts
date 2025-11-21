@@ -1,20 +1,13 @@
 import express from 'express';
-import { getDatabase } from '../db';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { getLibraryEntry, getProofById, getProofsByUser, upsertLibraryEntry } from '../db';
 
 const router = express.Router();
 
 // Get user's proofs
 router.get('/proofs', authenticateToken, (req: AuthRequest, res) => {
   try {
-    const db = getDatabase();
-
-    const proofs = db.prepare(`
-      SELECT * FROM proofs
-      WHERE user_id = ?
-      ORDER BY updated_at DESC
-    `).all(req.userId) as any[];
-
+    const proofs = getProofsByUser(req.userId);
     res.json({ proofs });
   } catch (error) {
     console.error('Get user proofs error:', error);
@@ -27,36 +20,19 @@ router.post('/proofs/:id/save', authenticateToken, (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { tags, notes } = req.body;
-    const db = getDatabase();
 
     // Check if proof exists
-    const proof = db.prepare('SELECT * FROM proofs WHERE id = ?').get(id) as any;
+    const proof = getProofById(id);
     if (!proof) {
       return res.status(404).json({ error: 'Proof not found' });
     }
-
-    // Check if already saved
-    const existing = db.prepare(`
-      SELECT * FROM user_proof_library
-      WHERE user_id = ? AND proof_id = ?
-    `).get(req.userId, id) as any;
-
-    if (existing) {
-      // Update
-      db.prepare(`
-        UPDATE user_proof_library
-        SET tags = COALESCE(?, tags),
-            notes = COALESCE(?, notes)
-        WHERE id = ?
-      `).run(tags, notes, existing.id);
-    } else {
-      // Insert
-      const libId = `lib-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      db.prepare(`
-        INSERT INTO user_proof_library (id, user_id, proof_id, tags, notes)
-        VALUES (?, ?, ?, ?, ?)
-      `).run(libId, req.userId, id, tags || null, notes || null);
-    }
+    const existing = getLibraryEntry(req.userId, id);
+    upsertLibraryEntry({
+      userId: req.userId!,
+      proofId: id,
+      tags: tags ?? existing?.tags ?? null,
+      notes: notes ?? existing?.notes ?? null,
+    });
 
     res.json({ message: 'Proof saved to library' });
   } catch (error) {

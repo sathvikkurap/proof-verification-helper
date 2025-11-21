@@ -18,6 +18,7 @@ export default function Editor() {
   const [showVisualization, setShowVisualization] = useState(true);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentGoal, setCurrentGoal] = useState<string>('');
 
   useEffect(() => {
     if (id) {
@@ -74,8 +75,13 @@ theorem example : True := by trivial
     setLoading(true);
     setError(null);
     try {
+      // Parse code first to get latest parsed data
+      const parsedData = await proofsApi.parse(code);
+      setParsed(parsedData);
+      
       if (currentProof?.id) {
-        await proofsApi.update(currentProof.id, name, code);
+        const updatedProof = await proofsApi.update(currentProof.id, name, code);
+        setCurrentProof(updatedProof);
         // Show success message
         const successMsg = document.createElement('div');
         successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
@@ -85,6 +91,7 @@ theorem example : True := by trivial
       } else {
         const proof = await proofsApi.create(name, code);
         setCurrentProof(proof);
+        setParsed(proof.parsed || parsedData);
         navigate(`/editor/${proof.id}`);
         const successMsg = document.createElement('div');
         successMsg.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
@@ -93,7 +100,15 @@ theorem example : True := by trivial
         setTimeout(() => successMsg.remove(), 3000);
       }
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to save proof');
+      console.error('Save error:', err);
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to save proof';
+      setError(errorMsg);
+      // Show error message
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      errorDiv.textContent = `✗ ${errorMsg}`;
+      document.body.appendChild(errorDiv);
+      setTimeout(() => errorDiv.remove(), 5000);
     } finally {
       setLoading(false);
     }

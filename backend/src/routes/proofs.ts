@@ -1,5 +1,14 @@
 import express from 'express';
-import { getDatabase } from '../db';
+import {
+  addDependency,
+  clearDependencies,
+  createProof,
+  deleteProof,
+  getDependenciesForProof,
+  getDependentsForProof,
+  getProofById,
+  updateProof,
+} from '../db';
 import { generateId } from '../utils/id';
 import { authenticateToken, optionalAuth, AuthRequest } from '../middleware/auth';
 import { parseLeanCode } from '../utils/leanParser';
@@ -19,9 +28,13 @@ router.post('/parse', (req, res) => {
     const parsed = parseLeanCode(code);
 
     res.json(parsed);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Parse error:', error);
-    res.status(500).json({ error: 'Failed to parse code' });
+    const errorMessage = error?.message || 'Failed to parse code';
+    res.status(500).json({ 
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+    });
   }
 });
 
@@ -34,23 +47,23 @@ router.post('/', optionalAuth, (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Name and code are required' });
     }
 
-    const db = getDatabase();
     const id = generateId();
     const parsed = parseLeanCode(code);
     const status = parsed.errors.length > 0 ? 'error' : parsed.theorems.length > 0 ? 'complete' : 'incomplete';
-
-    db.prepare(`
-      INSERT INTO proofs (id, user_id, name, code, status)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(id, req.userId || null, name, code, status);
+    createProof({
+      id,
+      user_id: req.userId || null,
+      name,
+      code,
+      status,
+    });
 
     // Save dependencies
     for (const dep of parsed.dependencies) {
-      const depId = generateId();
-      db.prepare(`
-        INSERT INTO proof_dependencies (id, proof_id, depends_on_theorem)
-        VALUES (?, ?, ?)
-      `).run(depId, id, dep);
+      addDependency({
+        proof_id: id,
+        depends_on_theorem: dep,
+      });
     }
 
     res.status(201).json({
@@ -71,27 +84,14 @@ router.post('/', optionalAuth, (req: AuthRequest, res) => {
 router.get('/:id', optionalAuth, (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const db = getDatabase();
-
-    const proof = db.prepare('SELECT * FROM proofs WHERE id = ?').get(id) as any;
+    const proof = getProofById(id);
     if (!proof) {
       return res.status(404).json({ error: 'Proof not found' });
     }
 
     // Get dependencies
-    const dependencies = db.prepare(`
-      SELECT depends_on_proof_id, depends_on_theorem
-      FROM proof_dependencies
-      WHERE proof_id = ?
-    `).all(id) as any[];
-
-    // Get dependents
-    const dependents = db.prepare(`
-      SELECT proof_id
-      FROM proof_dependencies
-      WHERE depends_on_proof_id = ?
-    `).all(id) as any[];
-
+    const dependencies = getDependenciesForProof(id);
+    const dependents = getDependentsForProof(id);
     const parsed = parseLeanCode(proof.code);
 
     res.json({
@@ -111,10 +111,9 @@ router.put('/:id', optionalAuth, (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const { name, code } = req.body;
-    const db = getDatabase();
 
     // Check if proof exists
-    const proof = db.prepare('SELECT * FROM proofs WHERE id = ?').get(id) as any;
+    const proof = getProofById(id);
     if (!proof) {
       return res.status(404).json({ error: 'Proof not found' });
     }
@@ -132,23 +131,19 @@ router.put('/:id', optionalAuth, (req: AuthRequest, res) => {
     const parsed = parseLeanCode(code || proof.code);
     const status = parsed.errors.length > 0 ? 'error' : parsed.theorems.length > 0 ? 'complete' : 'incomplete';
 
-    db.prepare(`
-      UPDATE proofs
-      SET name = COALESCE(?, name),
-          code = COALESCE(?, code),
-          status = ?,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(name, code, status, id);
+    updateProof(id, {
+      name: name || proof.name,
+      code: code || proof.code,
+      status,
+    });
 
     // Update dependencies
-    db.prepare('DELETE FROM proof_dependencies WHERE proof_id = ?').run(id);
+    clearDependencies(id);
     for (const dep of parsed.dependencies) {
-      const depId = generateId();
-      db.prepare(`
-        INSERT INTO proof_dependencies (id, proof_id, depends_on_theorem)
-        VALUES (?, ?, ?)
-      `).run(depId, id, dep);
+      addDependency({
+        proof_id: id,
+        depends_on_theorem: dep,
+      });
     }
 
     res.json({
@@ -158,6 +153,9 @@ router.put('/:id', optionalAuth, (req: AuthRequest, res) => {
       status,
       dependencies: parsed.dependencies,
       parsed,
+      user_id: proof.user_id,
+      created_at: proof.created_at,
+      updated_at: new Date().toISOString(),
     });
   } catch (error) {
     console.error('Update proof error:', error);
@@ -169,9 +167,7 @@ router.put('/:id', optionalAuth, (req: AuthRequest, res) => {
 router.delete('/:id', authenticateToken, (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const db = getDatabase();
-
-    const proof = db.prepare('SELECT * FROM proofs WHERE id = ?').get(id) as any;
+    const proof = getProofById(id);
     if (!proof) {
       return res.status(404).json({ error: 'Proof not found' });
     }
@@ -180,7 +176,7 @@ router.delete('/:id', authenticateToken, (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
-    db.prepare('DELETE FROM proofs WHERE id = ?').run(id);
+    deleteProof(id);
 
     res.json({ message: 'Proof deleted' });
   } catch (error) {
@@ -193,9 +189,7 @@ router.delete('/:id', authenticateToken, (req: AuthRequest, res) => {
 router.post('/:id/analyze', (req, res) => {
   try {
     const { id } = req.params;
-    const db = getDatabase();
-
-    const proof = db.prepare('SELECT * FROM proofs WHERE id = ?').get(id) as any;
+    const proof = getProofById(id);
     if (!proof) {
       return res.status(404).json({ error: 'Proof not found' });
     }
@@ -227,24 +221,13 @@ router.post('/:id/analyze', (req, res) => {
 router.get('/:id/dependencies', (req, res) => {
   try {
     const { id } = req.params;
-    const db = getDatabase();
-
-    const proof = db.prepare('SELECT * FROM proofs WHERE id = ?').get(id) as any;
+    const proof = getProofById(id);
     if (!proof) {
       return res.status(404).json({ error: 'Proof not found' });
     }
 
-    const dependencies = db.prepare(`
-      SELECT depends_on_proof_id, depends_on_theorem
-      FROM proof_dependencies
-      WHERE proof_id = ?
-    `).all(id) as any[];
-
-    const dependents = db.prepare(`
-      SELECT proof_id
-      FROM proof_dependencies
-      WHERE depends_on_proof_id = ?
-    `).all(id) as any[];
+    const dependencies = getDependenciesForProof(id);
+    const dependents = getDependentsForProof(id);
 
     res.json({
       proofId: id,
@@ -265,9 +248,7 @@ router.post('/:id/suggestions', async (req, res) => {
   try {
     const { id } = req.params;
     const { currentGoal, errorMessage } = req.body;
-    const db = getDatabase();
-
-    const proof = db.prepare('SELECT * FROM proofs WHERE id = ?').get(id) as any;
+    const proof = getProofById(id);
     if (!proof) {
       return res.status(404).json({ error: 'Proof not found' });
     }
@@ -289,9 +270,7 @@ router.post('/:id/suggestions', async (req, res) => {
 router.post('/:id/verify', (req, res) => {
   try {
     const { id } = req.params;
-    const db = getDatabase();
-
-    const proof = db.prepare('SELECT * FROM proofs WHERE id = ?').get(id) as any;
+    const proof = getProofById(id);
     if (!proof) {
       return res.status(404).json({ error: 'Proof not found' });
     }
@@ -300,12 +279,7 @@ router.post('/:id/verify', (req, res) => {
     const isValid = parsed.errors.length === 0 && parsed.theorems.length > 0;
 
     // Update status
-    db.prepare(`
-      UPDATE proofs
-      SET status = ?,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `).run(isValid ? 'complete' : 'error', id);
+    updateProof(id, { status: isValid ? 'complete' : 'error' });
 
     res.json({
       valid: isValid,
