@@ -88,6 +88,9 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
       nodeSep: 50,
       edgeSep: 20,
       rankSep: 100,
+      fit: true,
+      padding: 30,
+      animate: false,
     }),
     []
   );
