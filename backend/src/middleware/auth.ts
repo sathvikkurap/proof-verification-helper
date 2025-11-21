@@ -5,7 +5,12 @@ export interface AuthRequest extends Request {
   userId?: string;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+if (!process.env.JWT_SECRET) {
+  console.warn('WARNING: JWT_SECRET is not defined in environment variables. Using unsafe default.');
+}
+const JWT_SECRET = process.env.JWT_SECRET || 'unsafe-default-secret-change-immediately';
+
 
 export function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers['authorization'];
