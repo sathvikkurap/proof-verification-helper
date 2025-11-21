@@ -165,7 +165,7 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
   );
 
   // Only return early here if elements is empty, BUT after all hooks are called
-  const isEmpty = elements.length === 0;
+  const isEmpty = !parsed || elements.length === 0;
 
   useEffect(() => {
     if (!containerRef.current || isEmpty) {
