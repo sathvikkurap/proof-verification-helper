@@ -14,18 +14,11 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
   const containerRef = useRef<HTMLDivElement>(null);
   const cyRef = useRef<cytoscape.Core | null>(null);
 
-  if (!parsed) {
-    return (
-      <div className="border border-gray-300 rounded-lg p-8 text-center text-gray-500">
-        No proof data available. Start typing to parse your code.
-      </div>
-    );
-  }
-
-  // Move elements useMemo before any early returns that depend on it being empty
+  // ALWAYS call hooks at the top level, unconditionally.
   const elements = useMemo<cytoscape.ElementDefinition[]>(() => {
+    if (!parsed) return []; // Handle missing data inside the hook
+
     const defs: cytoscape.ElementDefinition[] = [];
-    // ... (rest of logic remains same inside)
     const addNodes = (items: Array<{ name: string }>, prefix: string, type: string) => {
       items.forEach((item) => {
         defs.push({
@@ -61,15 +54,11 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
         ? `def-${dep}`
         : null;
 
-      if (!targetId) {
-        return;
-      }
+      if (!targetId) return;
 
       const sourceId =
         proofId || ((parsed.theorems || []).length > 0 ? `theorem-${parsed.theorems[0].name}` : null);
-      if (!sourceId) {
-        return;
-      }
+      if (!sourceId) return;
 
       defs.push({
         data: {
@@ -164,14 +153,20 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
     []
   );
 
-  // Only return early here if elements is empty, BUT after all hooks are called
-  const isEmpty = !parsed || elements.length === 0;
+  // Check if we have data to show (after hooks!)
+  const hasData = parsed && elements.length > 0;
 
   useEffect(() => {
-    if (!containerRef.current || isEmpty) {
+    // If no container or no data, cleanup and return
+    if (!containerRef.current || !hasData) {
+      if (cyRef.current) {
+        cyRef.current.destroy();
+        cyRef.current = null;
+      }
       return;
     }
 
+    // Re-initialize or update graph
     if (cyRef.current) {
       cyRef.current.destroy();
     }
@@ -205,12 +200,16 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
     cyRef.current = cyInstance;
 
     return () => {
-      cyInstance.destroy();
-      cyRef.current = null;
+      // Cleanup on unmount or dependency change
+      if (cyRef.current) {
+        cyRef.current.destroy();
+        cyRef.current = null;
+      }
     };
-  }, [elements, layout, style, proofId, isEmpty]);
+  }, [elements, layout, style, proofId, hasData]); // Include hasData in deps
 
-  if (isEmpty) {
+  // Conditional rendering comes LAST, after all hooks
+  if (!hasData) {
     return (
       <div className="border border-gray-300 rounded-lg p-8 text-center text-gray-500">
         No proof structure to visualize. Add theorems, lemmas, or definitions to see the dependency graph.
