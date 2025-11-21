@@ -210,7 +210,7 @@ theorem example : True := by trivial
             <CodeEditor value={code} onChange={handleCodeChange} height="600px" />
           </div>
 
-          {showVisualization && parsed && (
+          {showVisualization && (
             <div>
               <h2 className="text-lg font-semibold mb-2">Proof Structure</h2>
               <ProofVisualization parsed={parsed} proofId={currentProof?.id} />

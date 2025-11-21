@@ -179,12 +179,21 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
     const cyInstance = cytoscape({
       container: containerRef.current,
       elements,
-      layout: layout as cytoscape.LayoutOptions,
       style,
       userZoomingEnabled: true,
       boxSelectionEnabled: false,
       autoungrabify: true,
     });
+
+    try {
+      cyInstance.layout(layout as cytoscape.LayoutOptions).run();
+    } catch (e) {
+      console.error('Layout failed:', e);
+      cyInstance.layout({ name: 'grid', fit: true } as any).run();
+    }
+
+    cyInstance.center();
+    cyInstance.fit(undefined, 30);
 
     if (proofId) {
       cyInstance.on('tap', 'node', (evt) => {
