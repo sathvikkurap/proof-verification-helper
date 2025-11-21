@@ -22,9 +22,10 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
     );
   }
 
+  // Move elements useMemo before any early returns that depend on it being empty
   const elements = useMemo<cytoscape.ElementDefinition[]>(() => {
     const defs: cytoscape.ElementDefinition[] = [];
-
+    // ... (rest of logic remains same inside)
     const addNodes = (items: Array<{ name: string }>, prefix: string, type: string) => {
       items.forEach((item) => {
         defs.push({
@@ -163,12 +164,11 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
     []
   );
 
-  useEffect(() => {
-    if (!containerRef.current) {
-      return;
-    }
+  // Only return early here if elements is empty, BUT after all hooks are called
+  const isEmpty = elements.length === 0;
 
-    if (elements.length === 0) {
+  useEffect(() => {
+    if (!containerRef.current || isEmpty) {
       return;
     }
 
@@ -208,9 +208,9 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
       cyInstance.destroy();
       cyRef.current = null;
     };
-  }, [elements, layout, style, proofId]);
+  }, [elements, layout, style, proofId, isEmpty]);
 
-  if (elements.length === 0) {
+  if (isEmpty) {
     return (
       <div className="border border-gray-300 rounded-lg p-8 text-center text-gray-500">
         No proof structure to visualize. Add theorems, lemmas, or definitions to see the dependency graph.
