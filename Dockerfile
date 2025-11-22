@@ -1,6 +1,6 @@
 # Multi-stage Docker build for Proof Verification Helper
 # Stage 1: Build stage
-FROM node:18-alpine AS builder
+FROM node:25-alpine AS builder
 
 # Install system dependencies for building native modules
 RUN apk add --no-cache \
@@ -26,7 +26,7 @@ RUN npm ci --only=production
 RUN npm run build || echo "No build script found"
 
 # Stage 2: Frontend build stage
-FROM node:18-alpine AS frontend-builder
+FROM node:25-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
@@ -37,7 +37,7 @@ RUN npm ci
 RUN npm run build
 
 # Stage 3: Production stage
-FROM node:18-alpine AS production
+FROM node:25-alpine AS production
 
 # Install runtime dependencies
 RUN apk add --no-cache \
