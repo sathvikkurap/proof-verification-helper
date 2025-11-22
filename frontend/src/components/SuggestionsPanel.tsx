@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Lightbulb, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
+import { Lightbulb, ChevronDown, ChevronUp, CheckCircle, Sparkles, Target, Zap, BookOpen } from 'lucide-react';
 import { proofsApi } from '../api/proofs';
 
 interface Suggestion {
@@ -75,6 +75,19 @@ export default function SuggestionsPanel({
     }
   };
 
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'tactic':
+        return <Zap className="w-4 h-4" />;
+      case 'lemma':
+        return <BookOpen className="w-4 h-4" />;
+      case 'fix':
+        return <Target className="w-4 h-4" />;
+      default:
+        return <Sparkles className="w-4 h-4" />;
+    }
+  };
+
   if (loading) {
     return (
       <div className="bg-white border border-gray-300 rounded-lg p-4">
@@ -98,20 +111,24 @@ export default function SuggestionsPanel({
   }
 
   return (
-    <div className="bg-white border border-gray-300 rounded-lg">
-      <div className="p-4 border-b border-gray-200">
+    <div className="bg-white border border-gray-300 rounded-lg shadow-sm">
+      <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-blue-50">
         <div className="flex items-center space-x-2">
-          <Lightbulb className="w-5 h-5 text-yellow-500" />
-          <h3 className="font-semibold text-gray-900">AI Suggestions</h3>
-          <span className="text-sm text-gray-500">({suggestions.length})</span>
+          <Sparkles className="w-5 h-5 text-purple-600" />
+          <h3 className="font-semibold text-gray-900">AI Proof Copilot</h3>
+          <span className="text-sm text-gray-500">({suggestions.length} suggestions)</span>
         </div>
+        <p className="text-xs text-gray-600 mt-1">Intelligent guidance for your mathematical proof</p>
       </div>
-      <div className="divide-y divide-gray-200">
+      <div className="divide-y divide-gray-100">
         {suggestions.map((suggestion) => (
-          <div key={suggestion.id} className="p-4">
+          <div key={suggestion.id} className="p-4 hover:bg-gray-50 transition-colors">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-2">
+                <div className="flex items-center space-x-2 mb-3">
+                  <div className={`p-1.5 rounded ${getTypeColor(suggestion.type).replace('text-', 'bg-').replace('-800', '-100')}`}>
+                    {getTypeIcon(suggestion.type)}
+                  </div>
                   <span
                     className={`px-2 py-1 text-xs font-medium rounded ${getTypeColor(
                       suggestion.type
@@ -119,27 +136,35 @@ export default function SuggestionsPanel({
                   >
                     {suggestion.type}
                   </span>
-                  <span className="text-xs text-gray-500">
-                    {Math.round(suggestion.confidence * 100)}% confidence
-                  </span>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <span className="text-xs text-gray-500">
+                      {Math.round(suggestion.confidence * 100)}% confidence
+                    </span>
+                  </div>
                 </div>
-                <p className="text-sm font-medium text-gray-900 mb-1">
-                  {suggestion.content}
-                </p>
+                <div className="bg-gray-50 border-l-4 border-purple-200 pl-3 py-2 mb-2">
+                  <code className="text-sm font-mono font-medium text-gray-900 bg-white px-2 py-1 rounded border">
+                    {suggestion.content}
+                  </code>
+                </div>
                 {expanded.has(suggestion.id) && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    {suggestion.explanation}
-                  </p>
+                  <div className="mt-3 bg-blue-50 border border-blue-100 rounded-lg p-3">
+                    <p className="text-sm text-blue-800 leading-relaxed">
+                      {suggestion.explanation}
+                    </p>
+                  </div>
                 )}
               </div>
               <div className="flex items-center space-x-2 ml-4">
                 {onApply && (
                   <button
                     onClick={() => onApply(suggestion)}
-                    className="p-1 text-green-600 hover:text-green-700"
-                    title="Apply suggestion"
+                    className="px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-1"
+                    title="Apply this suggestion to your proof"
                   >
-                    <CheckCircle className="w-5 h-5" />
+                    <CheckCircle className="w-3 h-3" />
+                    <span>Apply</span>
                   </button>
                 )}
                 <button

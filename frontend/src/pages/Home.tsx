@@ -1,76 +1,108 @@
 import { Link } from 'react-router-dom';
-import { Code, Search, GraduationCap, Zap, BookOpen, TrendingUp } from 'lucide-react';
+import { Code, Search, GraduationCap, Zap, BookOpen, TrendingUp, Sparkles, Target, Brain } from 'lucide-react';
 
 export default function Home() {
   const features = [
     {
-      icon: Code,
-      title: 'Interactive Editor',
-      description: 'Write and edit Lean 4 proofs with syntax highlighting and real-time error checking.',
+      icon: Sparkles,
+      title: 'AI Proof Copilot',
+      description: 'Your intelligent mathematical assistant that understands formal proofs and provides context-aware suggestions.',
+      link: '/builder',
+      highlight: true,
+    },
+    {
+      icon: Brain,
+      title: 'Intelligent Guidance',
+      description: 'Advanced AI analyzes your proof state and suggests optimal next steps with detailed explanations.',
+      link: '/builder',
+    },
+    {
+      icon: Target,
+      title: 'Goal-Oriented Workflow',
+      description: 'Focus on mathematical reasoning while AI handles the technical details of formal proof construction.',
       link: '/editor',
     },
     {
-      icon: Zap,
-      title: 'AI-Powered Suggestions',
-      description: 'Get intelligent recommendations for lemmas, tactics, and proof steps.',
+      icon: Code,
+      title: 'Lean 4 Integration',
+      description: 'Full support for Lean 4 syntax with real-time parsing and verification.',
       link: '/editor',
     },
     {
       icon: BookOpen,
-      title: 'Proof Visualization',
-      description: 'Visualize proof structure and dependencies with interactive graphs.',
-      link: '/editor',
+      title: 'Personal Proof Library',
+      description: 'Save and organize your proofs, track progress, and build upon previous work.',
+      link: '/library',
     },
     {
       icon: Search,
-      title: 'Theorem Search',
-      description: 'Search and explore theorems from mathlib and your own proofs.',
+      title: 'Mathematical Knowledge',
+      description: 'Access theorems, lemmas, and definitions from Mathlib with intelligent search.',
       link: '/search',
-    },
-    {
-      icon: GraduationCap,
-      title: 'Step-by-Step Builder',
-      description: 'Build proofs incrementally with guided step suggestions.',
-      link: '/builder',
-    },
-    {
-      icon: TrendingUp,
-      title: 'Learn & Tutorials',
-      description: 'Interactive tutorials and examples to learn Lean 4.',
-      link: '/tutorials',
     },
   ];
 
   return (
     <div>
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Proof Verification Helper
-        </h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          An intelligent assistant for working with Lean 4 formal proofs. Get AI-powered
-          suggestions, visualize proof structure, and learn formal verification.
+        <div className="flex items-center justify-center mb-6">
+          <Sparkles className="w-12 h-12 text-purple-600 mr-4" />
+          <h1 className="text-5xl font-bold text-gray-900">
+            Mathematician's AI Copilot
+          </h1>
+        </div>
+        <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-4">
+          Transform your mathematical thinking into formal proofs with intelligent AI assistance.
+          Focus on the mathematics while your AI copilot handles the technical details.
         </p>
+        <div className="flex items-center justify-center space-x-6 text-sm text-gray-500">
+          <div className="flex items-center space-x-2">
+            <Brain className="w-4 h-4" />
+            <span>AI-Powered Reasoning</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Target className="w-4 h-4" />
+            <span>Lean 4 Integration</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <BookOpen className="w-4 h-4" />
+            <span>Personal Library</span>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
         {features.map((feature) => {
           const Icon = feature.icon;
+          const isHighlighted = feature.highlight;
           return (
             <Link
               key={feature.title}
               to={feature.link}
-              className="bg-white p-6 rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-lg transition-shadow"
+              className={`p-6 rounded-lg border transition-all duration-200 ${
+                isHighlighted
+                  ? 'bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200 hover:border-purple-300 hover:shadow-xl ring-2 ring-purple-100'
+                  : 'bg-white border-gray-200 hover:border-primary-300 hover:shadow-lg'
+              }`}
             >
               <div className="flex items-center space-x-3 mb-3">
-                <div className="p-2 bg-primary-100 rounded-lg">
-                  <Icon className="w-6 h-6 text-primary-600" />
+                <div className={`p-2 rounded-lg ${
+                  isHighlighted ? 'bg-purple-100' : 'bg-primary-100'
+                }`}>
+                  <Icon className={`w-6 h-6 ${
+                    isHighlighted ? 'text-purple-600' : 'text-primary-600'
+                  }`} />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className={`text-lg font-semibold ${
+                  isHighlighted ? 'text-purple-900' : 'text-gray-900'
+                }`}>
                   {feature.title}
+                  {isHighlighted && <span className="ml-2 text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded-full">Featured</span>}
                 </h3>
               </div>
-              <p className="text-gray-600">{feature.description}</p>
+              <p className={`${
+                isHighlighted ? 'text-purple-700' : 'text-gray-600'
+              }`}>{feature.description}</p>
             </Link>
           );
         })}

@@ -48,5 +48,15 @@ export const proofsApi = {
     const response = await api.post(`/proofs/${id}/verify`);
     return response.data;
   },
+
+  saveToLibrary: async (id: string, tags?: string, notes?: string) => {
+    const response = await api.post(`/user/proofs/${id}/save`, { tags, notes });
+    return response.data;
+  },
+
+  getLibrary: async () => {
+    const response = await api.get('/user/proofs');
+    return response.data;
+  },
 };
 

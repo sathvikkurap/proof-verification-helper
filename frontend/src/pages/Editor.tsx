@@ -5,7 +5,7 @@ import ProofVisualization from '../components/ProofVisualization';
 import SuggestionsPanel from '../components/SuggestionsPanel';
 import { proofsApi } from '../api/proofs';
 import { useProofStore } from '../store/proofStore';
-import { Save, Play, RefreshCw, Eye, EyeOff } from 'lucide-react';
+import { Save, Play, RefreshCw, Eye, EyeOff, BookmarkPlus } from 'lucide-react';
 
 export default function Editor() {
   const { id } = useParams();
@@ -114,6 +114,31 @@ theorem example : True := by trivial
     }
   };
 
+  const handleSaveToLibrary = async () => {
+    if (!currentProof?.id) {
+      // First save the proof, then save to library
+      await handleSave();
+      if (!currentProof?.id) return;
+    }
+
+    try {
+      await proofsApi.saveToLibrary(currentProof.id);
+      const successMsg = document.createElement('div');
+      successMsg.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      successMsg.textContent = '✓ Proof saved to library!';
+      document.body.appendChild(successMsg);
+      setTimeout(() => successMsg.remove(), 3000);
+    } catch (err: any) {
+      console.error('Save to library error:', err);
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to save to library';
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'fixed top-4 right-4 bg-orange-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      errorDiv.textContent = `⚠ ${errorMsg}`;
+      document.body.appendChild(errorDiv);
+      setTimeout(() => errorDiv.remove(), 5000);
+    }
+  };
+
   const handleVerify = async () => {
     setLoading(true);
     setError(null);
@@ -183,6 +208,14 @@ theorem example : True := by trivial
             >
               <Save className="w-4 h-4" />
               <span>{loading ? 'Saving...' : 'Save'}</span>
+            </button>
+            <button
+              onClick={handleSaveToLibrary}
+              disabled={loading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 transition-colors"
+            >
+              <BookmarkPlus className="w-4 h-4" />
+              <span>{loading ? 'Saving...' : 'Save to Library'}</span>
             </button>
         </div>
       </div>
