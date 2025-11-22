@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/Users/sathvikkurapati/Downloads/proof-verification-helper/backend/logs/.f9c7527d387aa588d51db33705b827246e483382-audit.json",
+    "files": [
+        {
+            "date": 1763776909066,
+            "name": "/Users/sathvikkurapati/Downloads/proof-verification-helper/backend/logs/error-2025-11-21.log",
+            "hash": "a1671162adfa4425c5adf0965ca22607256d803b528835e7ccb64d50f447b6a2"
+        }
+    ],
+    "hashType": "sha256"
+}

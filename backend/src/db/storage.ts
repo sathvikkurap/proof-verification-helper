@@ -88,11 +88,12 @@ function now() {
 // Proof helpers
 export function createProof(record: Omit<ProofRecord, 'created_at' | 'updated_at'>) {
   const s = loadState();
+  if (!s) throw new Error('Failed to load state');
   const timestamp = now();
   const proof: ProofRecord = {
     ...record,
-    created_at: record.created_at ?? timestamp,
-    updated_at: record.updated_at ?? timestamp,
+    created_at: timestamp,
+    updated_at: timestamp,
   };
   s.proofs.push(proof);
   saveState();
@@ -100,11 +101,13 @@ export function createProof(record: Omit<ProofRecord, 'created_at' | 'updated_at
 }
 
 export function getProofById(id: string) {
-  return loadState().proofs.find((proof) => proof.id === id);
+  const state = loadState();
+  return state?.proofs.find((proof) => proof.id === id);
 }
 
 export function updateProof(id: string, updates: Partial<Omit<ProofRecord, 'id'>>) {
   const s = loadState();
+  if (!s) return null;
   const proof = s.proofs.find((p) => p.id === id);
   if (!proof) return null;
   Object.assign(proof, updates, { updated_at: now() });
@@ -114,6 +117,7 @@ export function updateProof(id: string, updates: Partial<Omit<ProofRecord, 'id'>
 
 export function deleteProof(id: string) {
   const s = loadState();
+  if (!s) return;
   s.proofs = s.proofs.filter((proof) => proof.id !== id);
   s.dependencies = s.dependencies.filter(
     (dep) => dep.proof_id !== id && dep.depends_on_proof_id !== id
@@ -124,7 +128,7 @@ export function deleteProof(id: string) {
 
 export function getProofsByUser(userId: string | undefined | null) {
   const s = loadState();
-  if (!userId) return [];
+  if (!userId || !s) return [];
   return s.proofs
     .filter((proof) => proof.user_id === userId)
     .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
@@ -133,12 +137,14 @@ export function getProofsByUser(userId: string | undefined | null) {
 // Dependency helpers
 export function clearDependencies(proofId: string) {
   const s = loadState();
+  if (!s) return;
   s.dependencies = s.dependencies.filter((dep) => dep.proof_id !== proofId);
   saveState();
 }
 
 export function addDependency(dep: Omit<DependencyRecord, 'id' | 'created_at'>) {
   const s = loadState();
+  if (!s) throw new Error('Failed to load state');
   const entry: DependencyRecord = {
     id: generateId(),
     created_at: now(),
@@ -150,24 +156,29 @@ export function addDependency(dep: Omit<DependencyRecord, 'id' | 'created_at'>) 
 }
 
 export function getDependenciesForProof(proofId: string) {
-  return loadState().dependencies.filter((dep) => dep.proof_id === proofId);
+  const state = loadState();
+  return state?.dependencies.filter((dep) => dep.proof_id === proofId) || [];
 }
 
 export function getDependentsForProof(proofId: string) {
-  return loadState().dependencies.filter((dep) => dep.depends_on_proof_id === proofId);
+  const state = loadState();
+  return state?.dependencies.filter((dep) => dep.depends_on_proof_id === proofId) || [];
 }
 
 // User helpers
 export function findUserByEmailOrUsername(email: string, username: string) {
-  return loadState().users.find((user) => user.email === email || user.username === username);
+  const state = loadState();
+  return state?.users.find((user) => user.email === email || user.username === username);
 }
 
 export function findUserByEmail(email: string) {
-  return loadState().users.find((user) => user.email === email);
+  const state = loadState();
+  return state?.users.find((user) => user.email === email);
 }
 
 export function createUser(record: Omit<UserRecord, 'created_at' | 'updated_at'>) {
   const s = loadState();
+  if (!s) throw new Error('Failed to load state');
   const timestamp = now();
   const user: UserRecord = {
     ...record,
@@ -181,7 +192,8 @@ export function createUser(record: Omit<UserRecord, 'created_at' | 'updated_at'>
 
 // Library helpers
 export function getLibraryEntry(userId: string, proofId: string) {
-  return loadState().library.find(
+  const state = loadState();
+  return state?.library.find(
     (entry) => entry.user_id === userId && entry.proof_id === proofId
   );
 }
@@ -193,6 +205,7 @@ export function upsertLibraryEntry(params: {
   notes?: string | null;
 }) {
   const s = loadState();
+  if (!s) throw new Error('Failed to load state');
   const timestamp = now();
   let entry = s.library.find(
     (item) => item.user_id === params.userId && item.proof_id === params.proofId
@@ -253,9 +266,10 @@ export function getTheoremById(id: string) {
 }
 
 export function getDependentsByTheorem(theoremId: string) {
-  const proofs = loadState().proofs.filter((proof) =>
-    loadState()
-      .dependencies
+  const state = loadState();
+  if (!state) return [];
+  const proofs = state.proofs.filter((proof) =>
+    state.dependencies
       .some((dep) => dep.proof_id === proof.id && dep.depends_on_theorem === theoremId)
   );
   return proofs.map((proof) => ({

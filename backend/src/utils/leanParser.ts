@@ -37,127 +37,56 @@ export function parseLeanCode(code: string): ParsedProof {
   const dependencies: string[] = [];
   const errors: ParseError[] = [];
 
-  let currentTheorem: { name: string; statement: string; proof: string; lineStart: number } | null = null;
-  let braceDepth = 0;
-  let inProof = false;
-
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
 
-    // Check for theorem/lemma declarations
-    const theoremMatch = trimmed.match(/^(theorem|lemma)\s+(\w+)\s*[:=]/);
+    // Parse theorems and lemmas
+    const theoremMatch = trimmed.match(/^(theorem|lemma)\s+([^\s:]+)\s*:?\s*([^=]*)\s*:?=\s*(.*)$/);
     if (theoremMatch) {
-      if (currentTheorem) {
-        // Save previous theorem
-        const type = currentTheorem.name.startsWith('lemma_') ? 'lemma' : 'theorem';
-        const info: TheoremInfo = {
-          name: currentTheorem.name,
-          statement: currentTheorem.statement,
-          proof: currentTheorem.proof,
-          lineStart: currentTheorem.lineStart,
-          lineEnd: i - 1,
-        };
-        if (type === 'lemma') {
-          lemmas.push(info);
-        } else {
-          theorems.push(info);
-        }
-      }
+      const [, type, name, statement, proof] = theoremMatch;
+      const isLemma = type === 'lemma';
 
-      const name = theoremMatch[2];
-      const statement = line.substring(line.indexOf(':') + 1).trim();
-      currentTheorem = {
-        name,
-        statement,
-        proof: '',
+      const info: TheoremInfo = {
+        name: name.replace(/[^\w]/g, ''), // Clean name
+        statement: statement.trim(),
+        proof: trimmed,
         lineStart: i,
+        lineEnd: i,
       };
-      inProof = false;
-      braceDepth = 0;
+
+      if (isLemma) {
+        lemmas.push(info);
+      } else {
+        theorems.push(info);
+      }
     }
 
-    // Check for definitions
-    const defMatch = trimmed.match(/^def\s+(\w+)\s*[:=]/);
+    // Parse definitions
+    const defMatch = trimmed.match(/^def\s+([^\s:]+)\s*:?\s*([^=]*)\s*:?=\s*(.*)$/);
     if (defMatch) {
-      const name = defMatch[1];
-      const type = line.includes(':') ? line.substring(line.indexOf(':') + 1, line.indexOf('=') !== -1 ? line.indexOf('=') : undefined).trim() : '';
-      const value = line.includes('=') ? line.substring(line.indexOf('=') + 1).trim() : undefined;
-      
+      const [, name, type, value] = defMatch;
+
       definitions.push({
-        name,
-        type,
-        value,
+        name: name.replace(/[^\w]/g, ''), // Clean name
+        type: type.trim(),
+        value: value.trim(),
         lineStart: i,
         lineEnd: i,
       });
     }
 
-    // Track proof content
-    if (currentTheorem) {
-      if (trimmed.includes(':=') || trimmed.includes('by')) {
-        inProof = true;
-      }
-
-      if (inProof) {
-        currentTheorem.proof += line + '\n';
-        
-        // Count braces for proof boundaries
-        for (const char of line) {
-          if (char === '{') braceDepth++;
-          if (char === '}') braceDepth--;
-        }
-
-        // Check for dependencies (using statements)
-        const useMatch = trimmed.match(/use\s+(\w+)/);
-        if (useMatch) {
-          dependencies.push(useMatch[1]);
-        }
-
-        const applyMatch = trimmed.match(/apply\s+(\w+)/);
-        if (applyMatch) {
-          dependencies.push(applyMatch[1]);
-        }
-
-        // End of proof
-        if (braceDepth === 0 && trimmed && !trimmed.startsWith('--')) {
-          if (trimmed.match(/^(theorem|lemma|def|end|namespace)/)) {
-            // Save current theorem
-            const type = currentTheorem.name.startsWith('lemma_') ? 'lemma' : 'theorem';
-            const info: TheoremInfo = {
-              name: currentTheorem.name,
-              statement: currentTheorem.statement,
-              proof: currentTheorem.proof.trim(),
-              lineStart: currentTheorem.lineStart,
-              lineEnd: i - 1,
-            };
-            if (type === 'lemma') {
-              lemmas.push(info);
-            } else {
-              theorems.push(info);
-            }
-            currentTheorem = null;
-            inProof = false;
+    // Extract dependencies from proof content
+    if (trimmed.includes('apply') || trimmed.includes('rw') || trimmed.includes('exact')) {
+      const depMatches = trimmed.match(/(?:apply|rw|exact)\s+([^\s]+)/g);
+      if (depMatches) {
+        depMatches.forEach(match => {
+          const dep = match.split(/\s+/)[1];
+          if (dep && !dep.includes('(') && !dep.includes('[')) {
+            dependencies.push(dep);
           }
-        }
+        });
       }
-    }
-  }
-
-  // Save last theorem if exists
-  if (currentTheorem) {
-    const type = currentTheorem.name.startsWith('lemma_') ? 'lemma' : 'theorem';
-    const info: TheoremInfo = {
-      name: currentTheorem.name,
-      statement: currentTheorem.statement,
-      proof: currentTheorem.proof.trim(),
-      lineStart: currentTheorem.lineStart,
-      lineEnd: lines.length - 1,
-    };
-    if (type === 'lemma') {
-      lemmas.push(info);
-    } else {
-      theorems.push(info);
     }
   }
 

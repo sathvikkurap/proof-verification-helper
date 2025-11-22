@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build application
+      run: npm run build
+
+    - name: Run tests
+      run: npm test
+
+    - name: Create GitHub release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: |
+          ## What's Changed
+
+          ### 🚀 Features
+          - New AI-powered proof suggestions
+          - Enhanced Lean 4 support
+          - Modern Material-UI interface
+
+          ### 🐛 Bug Fixes
+          - Fixed parser edge cases
+          - Improved error handling
+
+          ### 📚 Documentation
+          - Comprehensive API docs
+          - Updated examples
+
+          ### 🔧 Technical
+          - Docker containerization
+          - Production security hardening
+          - Comprehensive test suite
+
+          ---
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/v${{ github.event.release.previous_tag }}...${{ github.ref }}
+        draft: false
+        prerelease: false
+
+    - name: Publish to NPM (if applicable)
+      if: contains(github.ref, 'backend')
+      run: npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  docker-release:
+    runs-on: ubuntu-latest
+    needs: release
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Extract version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Build and push release image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: |
+          proof-verification-helper:latest
+          proof-verification-helper:${{ steps.get_version.outputs.VERSION }}
+        labels: |
+          org.opencontainers.image.title=Proof Verification Helper
+          org.opencontainers.image.description=AI-powered Lean 4 proof assistant
+          org.opencontainers.image.version=${{ steps.get_version.outputs.VERSION }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max

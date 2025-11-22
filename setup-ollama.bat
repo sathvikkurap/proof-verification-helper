@@ -92,3 +92,4 @@ echo.
 echo You can now run the application normally.
 echo.
 pause
+
