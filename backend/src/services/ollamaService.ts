@@ -4,8 +4,8 @@
 // Using global fetch (Node 18+) - no import needed for modern Node
 // For older Node versions, install: npm install node-fetch@2
 
-// Use global fetch, fallback to node-fetch if available
-const fetchFn = (globalThis as any).fetch;
+// Use global fetch (available in Node 18+)
+const fetchFn = globalThis.fetch;
 
 export interface OllamaConfig {
   baseUrl?: string; // Default: http://localhost:11434
@@ -39,6 +39,8 @@ export interface Suggestion {
  * Get AI suggestions using Ollama local LLM
  * Falls back to rule-based system if Ollama is not available
  */
+console.log('🔧 Ollama service loaded');
+
 export async function getOllamaSuggestions(
   context: AIContext,
   config: OllamaConfig = {}
@@ -57,11 +59,10 @@ export async function getOllamaSuggestions(
     }).catch(() => null);
 
     if (!healthCheck || !healthCheck.ok) {
-      console.log('Ollama not available, using rule-based fallback');
-      return [];
+      return []; // Fall back to rule-based
     }
 
-    // Build prompt for Lean 4 proof assistance
+    // Build enhanced prompt for Lean 4 proof assistance
     const prompt = buildLeanPrompt(context);
 
     // Call Ollama API
@@ -82,7 +83,7 @@ export async function getOllamaSuggestions(
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.statusText}`);
+      return []; // Fall back to rule-based
     }
 
     const data = await response.json();
@@ -90,16 +91,15 @@ export async function getOllamaSuggestions(
 
     return suggestions;
   } catch (error) {
-    console.error('Ollama service error:', error);
-    // Fall back to rule-based system
+    // Silently fall back to rule-based system
     return [];
   }
 }
 
 function buildLeanPrompt(context: AIContext): string {
-  let prompt = `You are an expert in Lean 4 formal proof verification. Provide helpful suggestions for proof construction.
+  let prompt = `You are an expert Lean 4 formal proof assistant with deep knowledge of theorem proving, tactics, and the Lean 4 standard library. Provide detailed, actionable suggestions for formal proof construction.
 
-Given the following Lean 4 proof:
+Given the following Lean 4 proof context:
 
 \`\`\`lean
 ${context.proofCode}
@@ -108,82 +108,144 @@ ${context.proofCode}
 `;
 
   if (context.errorMessage) {
-    prompt += `Error: ${context.errorMessage}\n\n`;
-    prompt += `Suggest fixes for this error. Provide 2-3 specific suggestions with explanations.\n`;
+    prompt += `ERROR MESSAGE: ${context.errorMessage}\n\n`;
+    prompt += `Analyze this error and provide 3-4 detailed suggestions to fix it. Focus on:\n`;
+    prompt += `- Specific tactics or lemmas to apply\n`;
+    prompt += `- Code structure changes needed\n`;
+    prompt += `- Import statements that might be missing\n`;
+    prompt += `- Type annotations or syntax corrections\n\n`;
   } else if (context.currentGoal) {
-    prompt += `Current goal: ${context.currentGoal}\n\n`;
-    prompt += `Suggest the next step or relevant lemmas. Provide 2-3 specific suggestions.\n`;
+    prompt += `CURRENT PROOF GOAL: ${context.currentGoal}\n\n`;
+    prompt += `Analyze this goal and suggest 4-5 detailed proof steps. Consider:\n`;
+    prompt += `- Which tactics would be most effective\n`;
+    prompt += `- Relevant lemmas from the standard library\n`;
+    prompt += `- Proof strategies (induction, case analysis, etc.)\n`;
+    prompt += `- When to use automation vs manual steps\n\n`;
   } else {
-    prompt += `Suggest relevant lemmas, tactics, or next steps for this proof. Provide 3-5 specific suggestions.\n`;
+    prompt += `Suggest 4-6 detailed improvements and next steps for this proof. Analyze:\n`;
+    prompt += `- Proof structure and completeness\n`;
+    prompt += `- Missing lemmas or definitions\n`;
+    prompt += `- Optimization opportunities\n`;
+    prompt += `- Standard library theorems to use\n\n`;
   }
 
-  prompt += `\nFormat your response as a numbered list. For each suggestion:
-1. Type (lemma/tactic/fix/step)
-2. The suggestion content
-3. Brief explanation
+  prompt += `Format your response as a numbered list with EXACTLY this structure:
 
-Example:
-1. [lemma] Nat.add_comm - Use commutativity of addition
-2. [tactic] simp - Simplify the goal using available lemmas
-3. [step] induction a - Prove by induction on variable a`;
+1. **[TYPE]** Suggestion Title
+   **Content:** exact code/tactic to use
+   **Why it works:** detailed explanation of the mathematical reasoning
+   **When to use:** specific conditions where this applies
+   **Example:** concrete code example showing usage
+
+2. **[TYPE]** Another Suggestion Title
+   **Content:** exact code/tactic to use
+   **Why it works:** detailed explanation of the mathematical reasoning
+   **When to use:** specific conditions where this applies
+   **Example:** concrete code example showing usage
+
+IMPORTANT:
+- Use [tactic] for proof tactics, [lemma] for theorems/lemmas, [fix] for error fixes, [step] for general advice
+- Be specific about Lean 4 syntax and standard library functions
+- Explain the mathematical logic behind each suggestion
+- Include working code examples
+- Focus on correctness and clarity`;
 
   return prompt;
 }
 
 function parseOllamaResponse(response: string, context: AIContext): Suggestion[] {
   const suggestions: Suggestion[] = [];
-  const lines = response.split('\n').filter(line => line.trim());
+  const sections = response.split(/\d+\.\s*\*\*[^*]+\*\*/).filter(s => s.trim());
 
-  let currentSuggestion: Partial<Suggestion> | null = null;
-  let suggestionIndex = 0;
+  // Alternative parsing for the detailed format
+  const numberedSections = response.split(/\d+\.\s*\*\*(\w+)\*\*\s*([^\n]+)/);
 
-  for (const line of lines) {
-    // Match numbered list items
-    const numberedMatch = line.match(/^\d+\.\s*\[?(\w+)\]?\s*(.+)/);
-    if (numberedMatch) {
-      // Save previous suggestion
-      if (currentSuggestion && currentSuggestion.content) {
-        suggestions.push({
-          id: `ollama-${suggestionIndex++}`,
-          type: (currentSuggestion.type as any) || 'step',
-          content: currentSuggestion.content,
-          explanation: currentSuggestion.explanation || '',
-          confidence: 0.75,
-          context: context.proofCode,
-        });
-      }
+  for (let i = 1; i < numberedSections.length; i += 3) {
+    const type = numberedSections[i]?.toLowerCase() || 'step';
+    const title = numberedSections[i + 1]?.trim() || '';
 
-      const type = numberedMatch[1].toLowerCase();
-      const content = numberedMatch[2].trim();
+    if (!title) continue;
 
-      currentSuggestion = {
+    // Extract content, why it works, when to use, and example
+    const sectionContent = numberedSections[i + 2] || '';
+    const contentMatch = sectionContent.match(/\*\*Content:\*\*\s*([^\n]+)/);
+    const whyMatch = sectionContent.match(/\*\*Why it works:\*\*\s*([^\n]+)/);
+    const whenMatch = sectionContent.match(/\*\*When to use:\*\*\s*([^\n]+)/);
+    const exampleMatch = sectionContent.match(/\*\*Example:\*\*\s*([^\n]+)/);
+
+    const content = contentMatch?.[1]?.trim() || title;
+    const explanation = [
+      whyMatch?.[1]?.trim(),
+      whenMatch?.[1]?.trim(),
+      exampleMatch?.[1]?.trim() ? `Example: ${exampleMatch[1].trim()}` : null
+    ].filter(Boolean).join('\n\n');
+
+    if (content) {
+      suggestions.push({
+        id: `ollama-${suggestions.length}`,
         type: (['lemma', 'tactic', 'fix', 'step'].includes(type) ? type : 'step') as any,
-        content: content.split(' - ')[0].trim(),
-        explanation: content.includes(' - ') ? content.split(' - ').slice(1).join(' - ') : '',
-      };
-    } else if (currentSuggestion && line.trim()) {
-      // Continue building explanation
-      if (!currentSuggestion.explanation) {
-        currentSuggestion.explanation = line.trim();
-      } else {
-        currentSuggestion.explanation += ' ' + line.trim();
-      }
+        content: content,
+        explanation: explanation || `Advanced suggestion: ${title}`,
+        confidence: 0.85, // Higher confidence for Ollama suggestions
+        context: context.proofCode,
+      });
     }
   }
 
-  // Add last suggestion
-  if (currentSuggestion && currentSuggestion.content) {
-    suggestions.push({
-      id: `ollama-${suggestionIndex++}`,
-      type: (currentSuggestion.type as any) || 'step',
-      content: currentSuggestion.content,
-      explanation: currentSuggestion.explanation || '',
-      confidence: 0.75,
-      context: context.proofCode,
-    });
+  // Fallback parsing if the new format doesn't match
+  if (suggestions.length === 0) {
+    const lines = response.split('\n').filter(line => line.trim());
+    let currentSuggestion: Partial<Suggestion> | null = null;
+    let suggestionIndex = 0;
+
+    for (const line of lines) {
+      // Match numbered list items
+      const numberedMatch = line.match(/^\d+\.\s*\[?(\w+)\]?\s*(.+)/);
+      if (numberedMatch) {
+        // Save previous suggestion
+        if (currentSuggestion && currentSuggestion.content) {
+          suggestions.push({
+            id: `ollama-${suggestionIndex++}`,
+            type: (currentSuggestion.type as any) || 'step',
+            content: currentSuggestion.content,
+            explanation: currentSuggestion.explanation || '',
+            confidence: 0.75,
+            context: context.proofCode,
+          });
+        }
+
+        const type = numberedMatch[1].toLowerCase();
+        const content = numberedMatch[2].trim();
+
+        currentSuggestion = {
+          type: (['lemma', 'tactic', 'fix', 'step'].includes(type) ? type : 'step') as any,
+          content: content.split(' - ')[0].trim(),
+          explanation: content.includes(' - ') ? content.split(' - ').slice(1).join(' - ') : '',
+        };
+      } else if (currentSuggestion && line.trim()) {
+        // Continue building explanation
+        if (!currentSuggestion.explanation) {
+          currentSuggestion.explanation = line.trim();
+        } else {
+          currentSuggestion.explanation += ' ' + line.trim();
+        }
+      }
+    }
+
+    // Add last suggestion
+    if (currentSuggestion && currentSuggestion.content) {
+      suggestions.push({
+        id: `ollama-${suggestionIndex++}`,
+        type: (currentSuggestion.type as any) || 'step',
+        content: currentSuggestion.content,
+        explanation: currentSuggestion.explanation || '',
+        confidence: 0.75,
+        context: context.proofCode,
+      });
+    }
   }
 
-  return suggestions;
+  return suggestions.slice(0, 5); // Limit to 5 suggestions
 }
 
 /**
@@ -192,12 +254,16 @@ function parseOllamaResponse(response: string, context: AIContext): Suggestion[]
 export async function checkOllamaAvailability(
   baseUrl: string = DEFAULT_CONFIG.baseUrl!
 ): Promise<boolean> {
+  console.log('🔍 Checking Ollama at:', baseUrl);
   try {
     const response = await fetchFn(`${baseUrl}/api/tags`, {
       method: 'GET',
     });
-    return response.ok;
-  } catch {
+    const isOk = response.ok;
+    console.log('📊 Ollama response OK:', isOk);
+    return isOk;
+  } catch (error) {
+    console.log('❌ Ollama check error:', error.message);
     return false;
   }
 }

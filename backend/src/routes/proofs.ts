@@ -13,6 +13,8 @@ import { generateId } from '../utils/id';
 import { authenticateToken, optionalAuth, AuthRequest } from '../middleware/auth';
 import { parseLeanCode } from '../utils/leanParser';
 import { getAISuggestions } from '../services/aiService';
+import { getOllamaSuggestions } from '../services/ollamaService';
+
 
 const router = express.Router();
 
@@ -264,6 +266,30 @@ router.post('/:id/suggestions', async (req, res) => {
     console.error('Get suggestions error:', error);
     res.status(500).json({ error: 'Failed to get suggestions' });
   }
+    const { id } = req.params;
+    const { currentGoal, errorMessage } = req.body;
+    const proof = getProofById(id);
+    if (!proof) {
+      return res.status(404).json({ error: 'Proof not found' });
+    }
+
+    // TEMPORARY: Force Ollama return for testing
+    console.log('🔍 FORCE Ollama test...');
+
+    const ollamaSuggestions = await getOllamaSuggestions({
+      proofCode: proof.code,
+      currentGoal,
+      errorMessage,
+    });
+
+    return res.json({
+      suggestions: ollamaSuggestions,
+      debug: {
+        ollama_called: true,
+        suggestions_count: ollamaSuggestions.length,
+        first_suggestion: ollamaSuggestions[0]?.content
+      }
+    });
 });
 
 // Verify proof (mock - would integrate with Lean server)

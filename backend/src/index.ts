@@ -46,6 +46,53 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Proof Verification Helper API' });
 });
 
+// Debug endpoint to check Ollama status
+app.get('/api/debug/ollama', async (req, res) => {
+  console.log('🔍 Debug endpoint called');
+  try {
+    console.log('📦 Importing Ollama service...');
+    const { checkOllamaAvailability, getOllamaSuggestions } = await import('./services/ollamaService.js');
+    console.log('✅ Import successful');
+
+    console.log('🔎 Checking availability...');
+    const available = await checkOllamaAvailability();
+    console.log('📊 Available:', available);
+
+    // Test Ollama suggestions
+    let testSuggestions = [];
+    try {
+      console.log('🤖 Testing suggestions...');
+      testSuggestions = await getOllamaSuggestions({
+        proofCode: 'theorem test : true := by',
+        currentGoal: 'true'
+      });
+      console.log('✅ Got suggestions:', testSuggestions.length);
+    } catch (e) {
+      console.log('❌ Test suggestions failed:', e.message);
+    }
+
+    res.json({
+      ollama_available: available,
+      ollama_url: 'http://localhost:11434',
+      model: 'llama3.2',
+      test_suggestions_count: testSuggestions.length,
+      functions_available: {
+        checkOllamaAvailability: typeof checkOllamaAvailability,
+        getOllamaSuggestions: typeof getOllamaSuggestions
+      }
+    });
+  } catch (error) {
+    console.log('❌ Debug endpoint error:', error);
+    res.json({
+      ollama_available: false,
+      error: error.message,
+      ollama_url: 'http://localhost:11434',
+      model: 'llama3.2',
+      functions_available: null
+    });
+  }
+});
+
 // Error handling
 app.use(errorHandler);
 

@@ -2,6 +2,7 @@ import { Suggestion } from '../types';
 import { parseLeanCode } from '../utils/leanParser';
 import { getOllamaSuggestions, checkOllamaAvailability } from './ollamaService';
 
+
 export interface AIContext {
   proofCode: string;
   currentGoal?: string;
@@ -155,7 +156,7 @@ export async function getAISuggestions(context: AIContext): Promise<Suggestion[]
   // Auto-detect Ollama: try it automatically, fall back gracefully if not available
   // This makes it work seamlessly for non-technical users - no configuration needed!
   const ollamaAvailable = await checkOllamaAvailability();
-  
+
   if (ollamaAvailable) {
     try {
       const ollamaSuggestions = await getOllamaSuggestions(context);
@@ -167,10 +168,9 @@ export async function getAISuggestions(context: AIContext): Promise<Suggestion[]
       }
     } catch (error) {
       // Silently fall back to rule-based - works great even without Ollama
-      console.log('Ollama unavailable, using rule-based suggestions');
     }
   }
-  
+
   // Use intelligent rule-based system (free and high quality)
   // This always works, even without Ollama - perfect for non-technical users!
   return getIntelligentSuggestions(context);
@@ -363,56 +363,131 @@ function suggestRelevantLemmas(parsed: any, code: string): Suggestion[] {
   const suggestions: Suggestion[] = [];
   const codeLower = code.toLowerCase();
 
-  // Check for arithmetic operations
-  if (code.includes('+') || code.includes('add')) {
-    const arithmeticLemmas = LEAN_KNOWLEDGE_BASE.lemmas.filter(l => l.category === 'arithmetic');
-    arithmeticLemmas.slice(0, 3).forEach(lemma => {
+  // Enhanced arithmetic lemmas
+  if (code.includes('+') || code.includes('add') || codeLower.includes('sum')) {
+    const arithmeticSuggestions = [
+      {
+        name: 'Nat.add_comm',
+        content: 'Nat.add_comm',
+        explanation: `Commutativity of addition: ∀ a b : Nat, a + b = b + a\n\nWhy it works: Addition is commutative for natural numbers\nWhen to use: When you need to swap addition operands\nExample: rw [Nat.add_comm] -- rewrites a + b to b + a`,
+        confidence: codeLower.includes('comm') ? 0.9 : 0.7
+      },
+      {
+        name: 'Nat.add_assoc',
+        content: 'Nat.add_assoc',
+        explanation: `Associativity of addition: ∀ a b c : Nat, (a + b) + c = a + (b + c)\n\nWhy it works: Addition is associative, allowing regrouping\nWhen to use: When rearranging addition parentheses\nExample: rw [Nat.add_assoc] -- changes grouping of additions`,
+        confidence: 0.7
+      },
+      {
+        name: 'Nat.add_zero',
+        content: 'Nat.add_zero',
+        explanation: `Adding zero: ∀ a : Nat, a + 0 = a\n\nWhy it works: Zero is the additive identity\nWhen to use: Simplifying expressions with + 0\nExample: rw [Nat.add_zero] -- removes + 0 from expressions`,
+        confidence: code.includes('0') ? 0.8 : 0.6
+      }
+    ];
+
+    arithmeticSuggestions.forEach(lemma => {
       suggestions.push({
         id: `lemma-${lemma.name}`,
         type: 'lemma',
-        content: lemma.name,
-        explanation: lemma.description,
-        confidence: codeLower.includes('comm') ? 0.8 : 0.6,
+        content: lemma.content,
+        explanation: lemma.explanation,
+        confidence: lemma.confidence,
         context: code,
       });
     });
   }
 
-  // Check for equality
-  if (code.includes('=') && !code.includes('==')) {
-    const logicLemmas = LEAN_KNOWLEDGE_BASE.lemmas.filter(l => l.category === 'logic' && l.name.includes('Eq'));
-    logicLemmas.slice(0, 2).forEach(lemma => {
+  // Enhanced multiplication lemmas
+  if (code.includes('*') || code.includes('mul') || codeLower.includes('product')) {
+    const multiplicationSuggestions = [
+      {
+        name: 'Nat.mul_comm',
+        content: 'Nat.mul_comm',
+        explanation: `Commutativity of multiplication: ∀ a b : Nat, a * b = b * a\n\nWhy it works: Multiplication is commutative for natural numbers\nWhen to use: When you need to swap multiplication operands\nExample: rw [Nat.mul_comm] -- rewrites a * b to b * a`,
+        confidence: codeLower.includes('comm') ? 0.9 : 0.7
+      },
+      {
+        name: 'Nat.mul_zero',
+        content: 'Nat.mul_zero',
+        explanation: `Multiplying by zero: ∀ a : Nat, a * 0 = 0\n\nWhy it works: Zero is the multiplicative annihilator\nWhen to use: Simplifying expressions with * 0\nExample: rw [Nat.mul_zero] -- simplifies a * 0 to 0`,
+        confidence: code.includes('0') ? 0.8 : 0.6
+      },
+      {
+        name: 'Nat.mul_one',
+        content: 'Nat.mul_one',
+        explanation: `Multiplying by one: ∀ a : Nat, a * 1 = a\n\nWhy it works: One is the multiplicative identity\nWhen to use: Simplifying expressions with * 1\nExample: rw [Nat.mul_one] -- removes * 1 from expressions`,
+        confidence: code.includes('1') ? 0.8 : 0.6
+      }
+    ];
+
+    multiplicationSuggestions.forEach(lemma => {
       suggestions.push({
         id: `lemma-${lemma.name}`,
         type: 'lemma',
-        content: lemma.name,
-        explanation: lemma.description,
-        confidence: 0.7,
+        content: lemma.content,
+        explanation: lemma.explanation,
+        confidence: lemma.confidence,
         context: code,
       });
     });
   }
 
-  // Check for logical connectives
-  if (code.includes('∧') || code.includes('And')) {
+  // Enhanced logical lemmas
+  if (code.includes('∧') || code.includes('And') || codeLower.includes('conjunction')) {
     suggestions.push({
       id: 'lemma-And.intro',
       type: 'lemma',
       content: 'And.intro',
-      explanation: 'To prove A ∧ B, use And.intro with proofs of A and B',
-      confidence: 0.8,
+      explanation: `Introduction rule for conjunction: ∀ a b : Prop, a → b → a ∧ b\n\nWhy it works: To prove A ∧ B, prove both A and B separately\nWhen to use: Goal is a conjunction (A ∧ B)\nExample: And.intro (proof_of_A) (proof_of_B)`,
+      confidence: 0.85,
       context: code,
     });
   }
 
-  if (code.includes('∨') || code.includes('Or')) {
+  if (code.includes('∨') || code.includes('Or') || codeLower.includes('disjunction')) {
     suggestions.push({
-      id: 'lemma-Or',
+      id: 'lemma-Or.intro',
       type: 'lemma',
-      content: 'Or.inl or Or.inr',
-      explanation: 'To prove A ∨ B, use Or.inl for left side or Or.inr for right side',
-      confidence: 0.8,
+      content: 'Or.inl and Or.inr',
+      explanation: `Introduction rules for disjunction: ∀ a b : Prop, a → a ∨ b, b → a ∨ b\n\nWhy it works: To prove A ∨ B, prove either A (Or.inl) or B (Or.inr)\nWhen to use: Goal is a disjunction (A ∨ B)\nExample: Or.inl proof_of_A -- proves left side\nExample: Or.inr proof_of_B -- proves right side`,
+      confidence: 0.85,
       context: code,
+    });
+  }
+
+  // Enhanced equality lemmas
+  if (code.includes('=') && !code.includes('≠') && !code.includes('==')) {
+    const equalitySuggestions = [
+      {
+        name: 'Eq.refl',
+        content: 'Eq.refl',
+        explanation: `Reflexivity of equality: ∀ a : α, a = a\n\nWhy it works: Everything equals itself\nWhen to use: Proving x = x or similar reflexive equalities\nExample: Eq.refl x -- proves x = x`,
+        confidence: 0.8
+      },
+      {
+        name: 'Eq.symm',
+        content: 'Eq.symm',
+        explanation: `Symmetry of equality: ∀ a b : α, a = b → b = a\n\nWhy it works: Equality is symmetric\nWhen to use: Need to flip an equality\nExample: Eq.symm h -- converts a = b to b = a`,
+        confidence: 0.75
+      },
+      {
+        name: 'Eq.trans',
+        content: 'Eq.trans',
+        explanation: `Transitivity of equality: ∀ a b c : α, a = b → b = c → a = c\n\nWhy it works: Equality chains together\nWhen to use: Combining multiple equalities\nExample: Eq.trans h₁ h₂ -- combines a = b and b = c into a = c`,
+        confidence: 0.75
+      }
+    ];
+
+    equalitySuggestions.forEach(lemma => {
+      suggestions.push({
+        id: `lemma-${lemma.name}`,
+        type: 'lemma',
+        content: lemma.content,
+        explanation: lemma.explanation,
+        confidence: lemma.confidence,
+        context: code,
+      });
     });
   }
 
@@ -423,40 +498,85 @@ function suggestTactics(parsed: any, currentGoal?: string): Suggestion[] {
   const suggestions: Suggestion[] = [];
   const goal = currentGoal?.toLowerCase() || '';
 
-  // Suggest tactics based on goal type
-  for (const tactic of LEAN_KNOWLEDGE_BASE.tactics) {
-    let confidence = tactic.confidence;
+  // Enhanced tactic suggestions with detailed explanations
+  const enhancedTactics = [
+    {
+      name: 'simp',
+      content: 'simp',
+      explanation: `Automatically simplifies expressions using available lemmas and definitions. This tactic applies simplification rules, unfolds definitions, and uses arithmetic properties. Most effective when you have complex expressions that can be reduced to simpler forms.\n\nExample: simp at h₁ -- simplifies hypothesis h₁\nExample: simp [Nat.add_comm, Nat.mul_comm] -- uses specific lemmas`,
+      confidence: goal.includes('simpl') ? 0.95 : 0.8,
+      examples: ['simp', 'simp at h', 'simp [lemma1, lemma2]']
+    },
+    {
+      name: 'rw',
+      content: 'rw [Nat.add_comm]',
+      explanation: `Rewrite expressions using equality lemmas. Replace left side with right side (or vice versa with ←). Essential for manipulating equations and using known equivalences.\n\nWhy it works: Transforms the goal using mathematical equivalences\nWhen to use: When you have equalities you want to apply to your goal\nExample: rw [Nat.add_comm] -- rewrite using commutativity\nExample: rw [← Nat.add_assoc] -- rewrite backwards`,
+      confidence: goal.includes('equality') || goal.includes('=') ? 0.9 : 0.7,
+      examples: ['rw [lemma]', 'rw [← lemma]', 'rw [h] at h2']
+    },
+    {
+      name: 'apply',
+      content: 'apply Nat.add_comm',
+      explanation: `Apply a theorem or lemma to the current goal. Matches the goal conclusion with the lemma conclusion, generating subgoals for the lemma premises.\n\nWhy it works: Uses existing proved theorems to solve new goals\nWhen to use: When your goal matches a known theorem's conclusion\nExample: apply Nat.add_comm -- applies commutativity theorem`,
+      confidence: goal.includes('implication') || goal.includes('→') ? 0.85 : 0.7,
+      examples: ['apply theorem_name', 'apply h']
+    },
+    {
+      name: 'exact',
+      content: 'exact rfl',
+      explanation: `Provide the exact proof term when you know it precisely. This is the most direct way to prove a goal when you have the exact proof.\n\nWhy it works: Directly gives Lean the proof term it needs\nWhen to use: When you know the exact proof or have a hypothesis that matches\nExample: exact rfl -- proves x = x\nExample: exact h -- uses hypothesis h directly`,
+      confidence: 0.85,
+      examples: ['exact proof_term', 'exact h']
+    },
+    {
+      name: 'intro',
+      content: 'intro x',
+      explanation: `Introduce universal quantifiers (∀) or implications (→). Creates a hypothesis and focuses on the conclusion.\n\nWhy it works: Breaks down complex goals into manageable parts\nWhen to use: Goal starts with ∀ or →\nExample: intro x -- introduces ∀x\nExample: intros h₁ h₂ -- introduces multiple hypotheses`,
+      confidence: goal.includes('∀') || goal.includes('→') ? 0.95 : 0.75,
+      examples: ['intro x', 'intros h1 h2', 'intro (h : P)']
+    },
+    {
+      name: 'induction',
+      content: 'induction n',
+      explanation: `Prove by structural induction on inductive types (Nat, List, Tree, etc.). Generates base case and inductive step.\n\nWhy it works: Mathematical induction principle for recursive structures\nWhen to use: Proving properties of recursive data types\nExample: induction n with | zero => ... | succ n ih => ...\nExample: induction l with | nil => ... | cons x xs ih => ...`,
+      confidence: goal.includes('nat') || goal.includes('list') ? 0.9 : 0.7,
+      examples: ['induction x', 'induction n with d hd', 'induction l with x xs ih']
+    },
+    {
+      name: 'cases',
+      content: 'cases h',
+      explanation: `Case analysis on inductive types. Considers all possible constructors of a type.\n\nWhy it works: Exhaustive case analysis covers all possibilities\nWhen to use: Need to handle different cases of an inductive type\nExample: cases h -- case analysis on hypothesis h\nExample: cases x with | inl a => ... | inr b => ... -- pattern matching`,
+      confidence: 0.75,
+      examples: ['cases h', 'cases x with p1 p2', 'rcases h with ⟨x, y⟩']
+    },
+    {
+      name: 'trivial',
+      content: 'trivial',
+      explanation: `Solves obviously true goals like True, equality of identical terms, or goals that follow immediately from assumptions.\n\nWhy it works: Recognizes trivial mathematical truths\nWhen to use: Goal is obviously true or follows directly from context\nExample: trivial -- solves True, rfl-style goals`,
+      confidence: 0.9,
+      examples: ['trivial']
+    },
+    {
+      name: 'reflexivity',
+      content: 'reflexivity',
+      explanation: `Proves equality by reflexivity (x = x). Also handles more complex reflexive equalities.\n\nWhy it works: All things are equal to themselves\nWhen to use: Goal is x = x or similar reflexive equality\nExample: reflexivity -- proves x = x\nExample: rfl -- short form`,
+      confidence: goal.includes('=') && !goal.includes('≠') ? 0.9 : 0.7,
+      examples: ['reflexivity', 'rfl']
+    }
+  ];
 
-    // Increase confidence if tactic matches goal
-    if (goal.includes('simpl') && tactic.name === 'simp') confidence = 0.9;
-    if (goal.includes('equality') && tactic.name === 'reflexivity') confidence = 0.9;
-    if (goal.includes('implication') && tactic.name === 'intro') confidence = 0.9;
-    if (goal.includes('existential') && tactic.name === 'use') confidence = 0.9;
-
+  for (const tactic of enhancedTactics) {
     suggestions.push({
       id: `tactic-${tactic.name}`,
       type: 'tactic',
-      content: tactic.name,
-      explanation: `${tactic.description}. ${tactic.when}.`,
-      confidence,
+      content: tactic.content,
+      explanation: tactic.explanation,
+      confidence: tactic.confidence,
       context: '',
     });
   }
 
-  // Always suggest common tactics
-  const commonTactics = ['simp', 'apply', 'exact', 'trivial'].map(name => {
-    const tactic = LEAN_KNOWLEDGE_BASE.tactics.find(t => t.name === name);
-    return {
-      id: `tactic-common-${name}`,
-      type: 'tactic' as const,
-      content: name,
-      explanation: tactic?.description || 'Common proof tactic',
-      confidence: 0.7,
-      context: '',
-    };
-  });
-
-  return [...suggestions, ...commonTactics];
+  return suggestions;
 }
 
 function getGeneralSuggestions(context: AIContext): Suggestion[] {
