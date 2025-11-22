@@ -4,6 +4,9 @@
 // Using global fetch (Node 18+) - no import needed for modern Node
 // For older Node versions, install: npm install node-fetch@2
 
+// Use global fetch, fallback to node-fetch if available
+const fetchFn = (globalThis as any).fetch;
+
 export interface OllamaConfig {
   baseUrl?: string; // Default: http://localhost:11434
   model?: string; // Default: 'llama3.2' or 'codellama' or 'deepseek-coder'
@@ -13,7 +16,7 @@ export interface OllamaConfig {
 const DEFAULT_CONFIG: OllamaConfig = {
   baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
   model: process.env.OLLAMA_MODEL || 'llama3.2',
-  enabled: process.env.OLLAMA_ENABLED === 'true',
+  enabled: process.env.OLLAMA_ENABLED !== 'false', // Enable by default unless explicitly disabled
 };
 
 export interface AIContext {

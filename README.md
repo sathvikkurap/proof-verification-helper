@@ -7,11 +7,12 @@ An intelligent web application designed to assist mathematicians and computer sc
 ### Core Features
 
 - **Interactive Proof Editor**: Write and edit Lean 4 code with syntax highlighting and real-time parsing
-- **Proof Visualization**: Interactive dependency graphs showing theorem → lemma dependencies
-- **AI-Powered Suggestions**: Get intelligent recommendations for lemmas, tactics, and proof steps
+- **Enhanced Proof Visualization**: Interactive dependency graphs with click-to-explore functionality, hover effects, and detailed tooltips
+- **Advanced AI-Powered Suggestions**: Detailed explanations, code examples, and context-aware recommendations
+- **Local LLM Integration**: Automatic Ollama detection for enhanced AI suggestions (enabled by default)
 - **Proof Search**: Search and explore theorems from mathlib and your own proofs
 - **Step-by-Step Proof Builder**: Build proofs incrementally with guided suggestions
-- **Learning & Tutorials**: Interactive tutorials and example proofs
+- **Comprehensive Examples**: Extensive collection of Lean 4 examples from simple to advanced
 - **User Library**: Save and organize your proofs
 - **Authentication**: User accounts with secure authentication
 
@@ -35,6 +36,10 @@ An intelligent web application designed to assist mathematicians and computer sc
 
 ## Getting Started
 
+### Quick Start Examples
+
+Ready to test the system? Check out our [comprehensive Lean 4 examples](./LEAN_EXAMPLES.md) ranging from basic arithmetic to advanced proofs!
+
 ### For Non-Technical Users (Easiest)
 
 **Download the standalone application:**
@@ -43,6 +48,12 @@ An intelligent web application designed to assist mathematicians and computer sc
 - Linux: Download `.AppImage`, make executable, and run
 
 **That's it!** The app runs everything automatically - no configuration needed!
+
+### Enhanced AI with Ollama (Optional)
+
+Want even better AI suggestions? Set up local LLM support:
+- See [OLLAMA_SETUP.md](./OLLAMA_SETUP.md) for installation instructions
+- Completely optional - the app works great without it!
 
 ### For Developers
 

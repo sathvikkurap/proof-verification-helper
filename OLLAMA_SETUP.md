@@ -1,52 +1,65 @@
-# Ollama Local LLM Setup Guide
+# Ollama Setup for Enhanced AI Suggestions
 
-## Why Use Ollama?
+This guide helps you set up Ollama locally to get better AI-powered suggestions for your Lean 4 proofs.
 
-Ollama allows you to use a **local LLM** for better AI suggestions while remaining:
-- ✅ 100% FREE (no API costs)
-- ✅ Privacy-focused (all local)
-- ✅ Offline capable
-- ✅ No rate limits
+## What is Ollama?
+
+Ollama runs large language models locally on your machine, providing AI assistance without sending your code to external servers. It's completely private and free.
 
 ## Installation
 
-### 1. Install Ollama
-
-**macOS:**
+### macOS
 ```bash
 brew install ollama
-# Or download from https://ollama.com
 ```
 
-**Linux:**
+### Linux
 ```bash
-curl -fsSL https://ollama.com/install.sh | sh
+curl -fsSL https://ollama.ai/install.sh | sh
 ```
 
-**Windows:**
-Download from https://ollama.com/download
+### Windows
+Download from: https://ollama.ai/download
 
-### 2. Pull a Code Model
+## Starting Ollama
 
-Recommended models for Lean 4:
+After installation, start the Ollama service:
 
 ```bash
-# Small, fast model (4-8GB RAM)
-ollama pull llama3.2
-
-# Better for code (8-16GB RAM)
-ollama pull codellama
-
-# Best for coding (12-24GB RAM)
-ollama pull deepseek-coder
-
-# Large, powerful (24GB+ RAM)
-ollama pull qwen2.5-coder
+ollama serve
 ```
 
-### 3. Configure Backend
+This will start Ollama on `http://localhost:11434`.
 
-Add to `backend/.env`:
+## Installing a Model
+
+The system is configured to use `llama3.2` by default, but you can choose other models. Here are some good options for Lean 4:
+
+### Recommended Models
+
+1. **Llama 3.2** (Default - 3B parameters)
+   ```bash
+   ollama pull llama3.2
+   ```
+
+2. **CodeLlama** (Good for code understanding)
+   ```bash
+   ollama pull codellama
+   ```
+
+3. **DeepSeek Coder** (Specialized for coding)
+   ```bash
+   ollama pull deepseek-coder
+   ```
+
+4. **Mistral** (Good general performance)
+   ```bash
+   ollama pull mistral
+   ```
+
+## Configuration
+
+The system automatically detects and uses Ollama if it's running. You can customize the configuration by creating a `.env` file in the `backend/` directory:
 
 ```env
 OLLAMA_ENABLED=true
@@ -54,91 +67,38 @@ OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.2
 ```
 
-### 4. Start Ollama
+## Testing Ollama
+
+After setup, you can test if Ollama is working:
 
 ```bash
-ollama serve
-```
-
-This starts Ollama on `http://localhost:11434`
-
-### 5. Restart Backend
-
-The backend will automatically detect and use Ollama if enabled.
-
-## How It Works
-
-1. **Hybrid Approach**: 
-   - Tries Ollama first (if enabled and available)
-   - Falls back to rule-based system if Ollama fails
-   - Combines both for best results
-
-2. **Smart Fallback**:
-   - If Ollama is not running → uses rule-based
-   - If Ollama errors → uses rule-based
-   - Always works, even without Ollama
-
-3. **Best of Both**:
-   - Ollama provides creative, context-aware suggestions
-   - Rule-based provides reliable, fast suggestions
-   - Combined = best experience
-
-## Testing
-
-```bash
-# Check if Ollama is running
 curl http://localhost:11434/api/tags
-
-# Test a query
-curl http://localhost:11434/api/generate -d '{
-  "model": "llama3.2",
-  "prompt": "How do I prove commutativity in Lean 4?",
-  "stream": false
-}'
 ```
 
-## Model Recommendations
+You should see your installed models listed.
 
-| Model | RAM Needed | Speed | Quality | Best For |
-|-------|-----------|-------|---------|----------|
-| llama3.2 | 4-8GB | Fast | Good | Quick suggestions |
-| codellama | 8-16GB | Medium | Better | Code-focused |
-| deepseek-coder | 12-24GB | Medium | Excellent | Best coding quality |
-| qwen2.5-coder | 24GB+ | Slower | Excellent | Complex proofs |
+## Benefits of Ollama
+
+- **Enhanced Suggestions**: Get more detailed, context-aware proof suggestions
+- **Privacy**: All AI processing happens locally on your machine
+- **No API Keys**: No external service accounts needed
+- **Offline**: Works without internet connection
+- **Customizable**: Choose different models based on your needs
 
 ## Troubleshooting
 
-### Ollama not detected?
-1. Check if running: `ollama list`
-2. Check port: `curl http://localhost:11434/api/tags`
-3. Check env vars in `backend/.env`
+### Ollama not found
+- Make sure Ollama is installed and running
+- Check that it's accessible at `http://localhost:11434`
 
-### Model not found?
-```bash
-ollama pull llama3.2  # or your chosen model
-```
+### Model not available
+- Install the model with `ollama pull <model-name>`
+- Check available models with `ollama list`
 
-### Out of memory?
-- Use smaller model (llama3.2)
-- Or use quantized version
-- Or stick with rule-based (still excellent!)
+### Performance issues
+- Smaller models (like llama3.2) are faster but less capable
+- Larger models give better suggestions but require more resources
 
-## Benefits Over Rule-Based
+## Automatic Fallback
 
-✅ **More Creative**: Can suggest novel approaches
-✅ **Better Context**: Understands proof flow better
-✅ **Natural Language**: Better explanations
-✅ **Adaptive**: Learns from context
-
-## Benefits Over Cloud AI
-
-✅ **Free**: No API costs
-✅ **Private**: All data stays local
-✅ **Fast**: No network latency
-✅ **Offline**: Works without internet
-✅ **Unlimited**: No rate limits
-
-## Current Status
-
-The app works great with just the rule-based system. Ollama is an **optional enhancement** that makes it even better!
-
+The system automatically falls back to rule-based suggestions if Ollama is not available, so it works even without Ollama setup!

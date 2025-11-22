@@ -98,6 +98,9 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
           shape: 'round-rectangle',
           width: 140,
           height: 70,
+          'font-size': '12px',
+          'text-wrap': 'wrap',
+          'text-max-width': '120px',
         },
       },
       {
@@ -111,6 +114,9 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
           shape: 'round-rectangle',
           width: 120,
           height: 60,
+          'font-size': '11px',
+          'text-wrap': 'wrap',
+          'text-max-width': '100px',
         },
       },
       {
@@ -124,6 +130,9 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
           shape: 'round-rectangle',
           width: 100,
           height: 50,
+          'font-size': '10px',
+          'text-wrap': 'wrap',
+          'text-max-width': '80px',
         },
       },
       {
@@ -137,6 +146,24 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
           shape: 'ellipse',
           width: 80,
           height: 40,
+          'font-size': '9px',
+          'text-wrap': 'wrap',
+          'text-max-width': '70px',
+        },
+      },
+      {
+        selector: 'node[type="legend"]',
+        style: {
+          'background-color': 'data(color)',
+          label: 'data(label)',
+          color: '#000',
+          'text-valign': 'center',
+          'text-halign': 'center',
+          shape: 'rectangle',
+          width: 100,
+          height: 25,
+          'font-size': '10px',
+          'font-weight': 'bold',
         },
       },
       {
@@ -147,6 +174,19 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
           'target-arrow-color': '#6b7280',
           'target-arrow-shape': 'triangle',
           'curve-style': 'bezier',
+          'font-size': '8px',
+          label: 'depends on',
+          'text-background-color': '#fff',
+          'text-background-opacity': 0.8,
+          'text-background-padding': '2px',
+        },
+      },
+      {
+        selector: 'edge.highlighted',
+        style: {
+          width: 4,
+          'line-color': '#3b82f6',
+          'target-arrow-color': '#3b82f6',
         },
       },
     ],
@@ -191,10 +231,70 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
     cyInstance.fit(undefined, 30);
 
     if (proofId) {
+      // Add click handlers for interactive exploration
       cyInstance.on('tap', 'node', (evt) => {
         const node = evt.target;
-        console.log('Selected node:', node.data());
+        const data = node.data();
+
+        if (data.type === 'legend') return; // Don't handle legend clicks
+
+        console.log('Selected node:', data);
+
+        // Highlight dependencies when clicking on theorems/lemmas/definitions
+        if (data.type === 'theorem' || data.type === 'lemma' || data.type === 'definition') {
+          // Reset all edges to default style
+          cyInstance.edges().style('width', 2);
+          cyInstance.edges().style('line-color', '#6b7280');
+
+          // Highlight edges connected to this node
+          node.connectedEdges().style('width', 4);
+          node.connectedEdges().style('line-color', '#3b82f6');
+        }
+
+        // Show detailed information about the node
+        let info = `${data.type.toUpperCase()}: ${data.label}\n\n`;
+        if (data.type === 'theorem') {
+          info += '📚 Theorem: A fundamental mathematical statement to be proved.\n';
+          info += 'Click to highlight its dependencies in the proof graph.';
+        } else if (data.type === 'lemma') {
+          info += '🔧 Lemma: A helper result used to prove theorems.\n';
+          info += 'Lemmas break down complex proofs into manageable steps.';
+        } else if (data.type === 'definition') {
+          info += '🏗️ Definition: Establishes mathematical objects and their properties.\n';
+          info += 'Definitions provide the foundation for theorems and lemmas.';
+        } else if (data.type === 'proof') {
+          info += '🎯 Current Proof: The theorem you\'re working on.\n';
+          info += 'Arrows show what this proof depends on to be valid.';
+        }
+
+        alert(info);
       });
+
+      // Add hover effects
+      cyInstance.on('mouseover', 'node', (evt) => {
+        const node = evt.target;
+        if (node.data().type !== 'legend') {
+          node.style('border-width', 3);
+          node.style('border-color', '#000');
+        }
+      });
+
+      cyInstance.on('mouseout', 'node', (evt) => {
+        const node = evt.target;
+        if (node.data().type !== 'legend') {
+          node.style('border-width', 0);
+        }
+      });
+
+      // Add legend in top-left corner with better positioning
+      const legendNodes = [
+        { data: { id: 'legend-theorem', label: 'Theorem', type: 'legend', color: '#3b82f6' }, position: { x: 100, y: 40 } },
+        { data: { id: 'legend-lemma', label: 'Lemma', type: 'legend', color: '#10b981' }, position: { x: 100, y: 70 } },
+        { data: { id: 'legend-definition', label: 'Definition', type: 'legend', color: '#8b5cf6' }, position: { x: 100, y: 100 } },
+        { data: { id: 'legend-proof', label: 'Current Proof', type: 'legend', color: '#f59e0b' }, position: { x: 100, y: 130 } },
+      ];
+
+      cyInstance.add(legendNodes);
     }
 
     cyRef.current = cyInstance;

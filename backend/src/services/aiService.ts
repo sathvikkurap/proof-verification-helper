@@ -32,18 +32,90 @@ const LEAN_KNOWLEDGE_BASE = {
     { name: 'False.elim', description: 'Elimination of False (ex falso)', category: 'logic' },
   ],
   tactics: [
-    { name: 'simp', description: 'Simplify using available lemmas', when: 'goal can be simplified', confidence: 0.8 },
-    { name: 'rw', description: 'Rewrite using an equality lemma', when: 'you have an equality to apply', confidence: 0.7 },
-    { name: 'apply', description: 'Apply a theorem to the goal', when: 'goal matches theorem conclusion', confidence: 0.7 },
-    { name: 'exact', description: 'Provide exact proof term', when: 'you have the exact proof', confidence: 0.9 },
-    { name: 'intro', description: 'Introduce a hypothesis', when: 'goal is an implication or forall', confidence: 0.8 },
-    { name: 'use', description: 'Provide witness for existential', when: 'goal is an existential', confidence: 0.8 },
-    { name: 'constructor', description: 'Apply constructor of inductive type', when: 'goal is inductive type', confidence: 0.7 },
-    { name: 'cases', description: 'Case analysis on a variable', when: 'you need to consider cases', confidence: 0.7 },
-    { name: 'induction', description: 'Prove by induction', when: 'proving property of natural numbers or lists', confidence: 0.8 },
-    { name: 'trivial', description: 'Solve trivial goals', when: 'goal is obviously true', confidence: 0.9 },
-    { name: 'reflexivity', description: 'Prove equality by reflexivity', when: 'goal is x = x', confidence: 0.9 },
-    { name: 'assumption', description: 'Use an assumption from context', when: 'goal matches an assumption', confidence: 0.9 },
+    {
+      name: 'simp',
+      description: 'Automatically simplify expressions using available lemmas',
+      when: 'Goal contains arithmetic, logical operations, or can be simplified',
+      confidence: 0.8,
+      examples: ['simp', 'simp at h1', 'simp [Nat.add_comm, Nat.mul_comm]']
+    },
+    {
+      name: 'rw',
+      description: 'Rewrite expressions using equality lemmas',
+      when: 'You have an equality that can replace part of your goal',
+      confidence: 0.7,
+      examples: ['rw [Nat.add_comm]', 'rw [← Nat.add_assoc]', 'rw [h1] at h2']
+    },
+    {
+      name: 'apply',
+      description: 'Apply a theorem or lemma to the current goal',
+      when: 'The conclusion of a theorem matches your goal',
+      confidence: 0.7,
+      examples: ['apply Nat.add_comm', 'apply h1']
+    },
+    {
+      name: 'exact',
+      description: 'Provide the exact proof term when you know it',
+      when: 'You have a direct proof term that matches the goal exactly',
+      confidence: 0.9,
+      examples: ['exact rfl', 'exact h1', 'exact Nat.zero_add x']
+    },
+    {
+      name: 'intro',
+      description: 'Introduce universal quantifiers or implications',
+      when: 'Goal starts with ∀ (forall) or → (implies)',
+      confidence: 0.8,
+      examples: ['intro x', 'intro h', 'intros x y h1 h2']
+    },
+    {
+      name: 'use',
+      description: 'Provide a witness for existential quantification',
+      when: 'Goal starts with ∃ (exists)',
+      confidence: 0.8,
+      examples: ['use 0', 'use (x + 1)', 'use ⟨x, h⟩']
+    },
+    {
+      name: 'constructor',
+      description: 'Apply constructors of inductive types',
+      when: 'Goal is an inductive type like And, Or, Prod, Sum',
+      confidence: 0.7,
+      examples: ['constructor', 'left', 'right', 'split']
+    },
+    {
+      name: 'cases',
+      description: 'Perform case analysis on inductive types',
+      when: 'You need to consider all possible constructors of a type',
+      confidence: 0.7,
+      examples: ['cases h', 'cases x with h1 h2', 'rcases h with ⟨x, y, hxy⟩']
+    },
+    {
+      name: 'induction',
+      description: 'Prove by structural induction',
+      when: 'Proving properties of recursive structures (Nat, List, Tree)',
+      confidence: 0.8,
+      examples: ['induction x', 'induction n with d hd', 'induction l with x xs ih']
+    },
+    {
+      name: 'trivial',
+      description: 'Solve obviously true goals',
+      when: 'Goal is true, or follows directly from assumptions',
+      confidence: 0.9,
+      examples: ['trivial']
+    },
+    {
+      name: 'reflexivity',
+      description: 'Prove equality by reflexivity',
+      when: 'Goal is x = x or similar obvious equality',
+      confidence: 0.9,
+      examples: ['rfl', 'reflexivity']
+    },
+    {
+      name: 'assumption',
+      description: 'Use a hypothesis that matches the goal exactly',
+      when: 'One of your assumptions is identical to the goal',
+      confidence: 0.9,
+      examples: ['assumption']
+    },
   ],
   patterns: [
     {
@@ -159,17 +231,25 @@ function analyzeError(errorMessage: string, code: string): Suggestion[] {
     suggestions.push({
       id: 'fix-type-1',
       type: 'fix',
-      content: 'Check type annotations and ensure all terms have compatible types',
-      explanation: 'Type mismatch errors usually mean you need to add type annotations or use type-correct terms. Check that function arguments match expected types.',
+      content: 'Add explicit type annotations for variables',
+      explanation: 'Type mismatch errors occur when Lean cannot infer the correct types. Add type annotations like (variable : Type) to clarify your intent. For example: let x : Nat := 5; instead of let x := 5;',
       confidence: 0.85,
       context: code,
     });
     suggestions.push({
       id: 'fix-type-2',
       type: 'fix',
-      content: 'Try adding explicit type annotations: (variable : Type)',
-      explanation: 'Explicit type annotations can help Lean understand your intent when types are ambiguous.',
-      confidence: 0.75,
+      content: 'Check function argument types match expected parameters',
+      explanation: 'Functions require specific argument types. If you see "type mismatch", verify that the arguments you\'re passing match the function signature. For example, Nat.add expects Nat arguments, not arbitrary types.',
+      confidence: 0.8,
+      context: code,
+    });
+    suggestions.push({
+      id: 'fix-type-3',
+      type: 'fix',
+      content: 'Use type conversion functions when needed',
+      explanation: 'If you need to convert between types, use explicit conversion functions. For example, to convert Int to Nat, use Int.toNat; for String to Nat, use String.toNat!.',
+      confidence: 0.7,
       context: code,
     });
   }
@@ -178,9 +258,25 @@ function analyzeError(errorMessage: string, code: string): Suggestion[] {
     suggestions.push({
       id: 'fix-unknown-1',
       type: 'fix',
-      content: 'Check that all variables and lemmas are properly defined or imported',
-      explanation: 'Unknown identifier errors mean the name is not in scope. Check imports, definitions, and variable declarations.',
+      content: 'Import required modules or definitions',
+      explanation: 'Unknown identifier errors mean the name is not in scope. Add import statements at the top of your file. For example: import Mathlib.Data.Nat.Basic -- for Nat functions; import Mathlib.Tactic -- for common tactics.',
       confidence: 0.9,
+      context: code,
+    });
+    suggestions.push({
+      id: 'fix-unknown-2',
+      type: 'fix',
+      content: 'Check variable names and spelling',
+      explanation: 'Verify that all variable names are spelled correctly and match their definitions. Lean is case-sensitive, so "Nat" ≠ "nat". Also check that variables are defined before use.',
+      confidence: 0.85,
+      context: code,
+    });
+    suggestions.push({
+      id: 'fix-unknown-3',
+      type: 'fix',
+      content: 'Use fully qualified names for standard library functions',
+      explanation: 'Some functions need full qualification. For example, use Nat.add instead of add, or List.length instead of length. This avoids naming conflicts and makes code clearer.',
+      confidence: 0.75,
       context: code,
     });
   }
@@ -189,9 +285,25 @@ function analyzeError(errorMessage: string, code: string): Suggestion[] {
     suggestions.push({
       id: 'fix-syntax-1',
       type: 'fix',
-      content: 'Check syntax: ensure proper use of :=, →, and parentheses',
-      explanation: 'Syntax errors often come from missing :=, incorrect arrow syntax (→ vs ->), or mismatched parentheses/brackets.',
+      content: 'Fix syntax: use := for definitions, → for functions',
+      explanation: 'Lean uses := for definitions and → for function types. For example: def add (x y : Nat) : Nat := x + y; not def add (x y : Nat) : Nat = x + y; Also check for proper spacing and punctuation.',
       confidence: 0.8,
+      context: code,
+    });
+    suggestions.push({
+      id: 'fix-syntax-2',
+      type: 'fix',
+      content: 'Check parentheses and bracket matching',
+      explanation: 'Every opening parenthesis/brace/bracket must have a matching closing one. Use parentheses for function calls: f(x), and curly braces for implicit arguments: {α : Type}.',
+      confidence: 0.75,
+      context: code,
+    });
+    suggestions.push({
+      id: 'fix-syntax-3',
+      type: 'fix',
+      content: 'Verify theorem/proof structure is correct',
+      explanation: 'Theorems should follow: theorem name (args) : proposition := proof. Proofs use by/intro/induction etc. Check that your structure matches Lean\'s expected format.',
+      confidence: 0.7,
       context: code,
     });
   }
@@ -200,9 +312,25 @@ function analyzeError(errorMessage: string, code: string): Suggestion[] {
     suggestions.push({
       id: 'fix-goal-1',
       type: 'fix',
-      content: 'The proof is incomplete. Try adding more tactics or lemmas',
-      explanation: 'Incomplete proof means you need more steps. Consider using simp, apply, or other tactics to make progress.',
-      confidence: 0.8,
+      content: 'Complete the proof by adding more tactics',
+      explanation: 'The proof is incomplete. After stating the theorem, you need a proof block with tactics. For example: theorem example : true := trivial; or use a proof block: theorem example : true := by trivial;',
+      confidence: 0.9,
+      context: code,
+    });
+    suggestions.push({
+      id: 'fix-goal-2',
+      type: 'fix',
+      content: 'Use "by" keyword for tactic-mode proofs',
+      explanation: 'For tactic-mode proofs, use "by" followed by tactics. For example: theorem add_comm : ∀ x y : Nat, x + y = y + x := by rw [Nat.add_comm]; This tells Lean to use tactics to construct the proof.',
+      confidence: 0.85,
+      context: code,
+    });
+    suggestions.push({
+      id: 'fix-goal-3',
+      type: 'fix',
+      content: 'Check that all cases are covered in case analysis',
+      explanation: 'If using cases or induction, ensure you prove all branches. Each case in a match or inductive proof must be handled. Use sorry; as a placeholder if stuck on a case.',
+      confidence: 0.75,
       context: code,
     });
   }
