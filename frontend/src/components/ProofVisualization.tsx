@@ -19,13 +19,27 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
     if (!parsed) return []; // Handle missing data inside the hook
 
     const defs: cytoscape.ElementDefinition[] = [];
+
+    // Helper function to create nodes with dynamic sizing
     const addNodes = (items: Array<{ name: string }>, prefix: string, type: string) => {
       items.forEach((item) => {
+        const label = item.name;
+        const labelLength = label.length;
+        // Dynamic sizing based on label length
+        const baseWidth = type === 'proof' ? 140 : type === 'theorem' ? 120 : type === 'lemma' ? 100 : 80;
+        const baseHeight = type === 'proof' ? 70 : type === 'theorem' ? 60 : type === 'lemma' ? 50 : 40;
+
+        // Increase size for longer labels
+        const width = Math.max(baseWidth, Math.min(labelLength * 8 + 40, 200));
+        const height = Math.max(baseHeight, Math.min(labelLength * 2 + 30, 100));
+
         defs.push({
           data: {
             id: `${prefix}-${item.name}`,
-            label: item.name,
+            label: label,
             type,
+            width,
+            height,
           },
         });
       });
@@ -41,6 +55,8 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
           id: proofId,
           label: 'Current Proof',
           type: 'proof',
+          width: 140,
+          height: 70,
         },
       });
     }
@@ -75,12 +91,14 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
   const layout = useMemo(
     () => ({
       name: 'dagre',
-      nodeSep: 50,
-      edgeSep: 20,
-      rankSep: 100,
+      nodeSep: 80, // Increased from 50 to prevent horizontal overlap
+      edgeSep: 40, // Increased from 20 to prevent edge overlap
+      rankSep: 150, // Increased from 100 to prevent vertical overlap
       fit: true,
-      padding: 30,
+      padding: 50, // Increased padding for better spacing
       animate: false,
+      rankDir: 'TB', // Top to bottom layout
+      align: 'UL', // Align to top-left to prevent centering issues
     }),
     []
   );
@@ -96,11 +114,12 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
           'text-valign': 'center',
           'text-halign': 'center',
           shape: 'round-rectangle',
-          width: 140,
-          height: 70,
+          width: 'data(width)',
+          height: 'data(height)',
           'font-size': '12px',
           'text-wrap': 'wrap',
-          'text-max-width': '120px',
+          'text-max-width': 'data(width)',
+          'padding': '10px',
         },
       },
       {
@@ -112,11 +131,12 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
           'text-valign': 'center',
           'text-halign': 'center',
           shape: 'round-rectangle',
-          width: 120,
-          height: 60,
+          width: 'data(width)',
+          height: 'data(height)',
           'font-size': '11px',
           'text-wrap': 'wrap',
-          'text-max-width': '100px',
+          'text-max-width': 'data(width)',
+          'padding': '8px',
         },
       },
       {
@@ -128,11 +148,12 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
           'text-valign': 'center',
           'text-halign': 'center',
           shape: 'round-rectangle',
-          width: 100,
-          height: 50,
+          width: 'data(width)',
+          height: 'data(height)',
           'font-size': '10px',
           'text-wrap': 'wrap',
-          'text-max-width': '80px',
+          'text-max-width': 'data(width)',
+          'padding': '6px',
         },
       },
       {
@@ -144,11 +165,12 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
           'text-valign': 'center',
           'text-halign': 'center',
           shape: 'ellipse',
-          width: 80,
-          height: 40,
+          width: 'data(width)',
+          height: 'data(height)',
           'font-size': '9px',
           'text-wrap': 'wrap',
-          'text-max-width': '70px',
+          'text-max-width': 'data(width)',
+          'padding': '4px',
         },
       },
       {
@@ -174,8 +196,10 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
           'target-arrow-color': '#6b7280',
           'target-arrow-shape': 'triangle',
           'curve-style': 'bezier',
+          'control-point-distance': 50, // Add curvature to avoid overlap
+          'control-point-weight': 0.5,
           'font-size': '8px',
-          label: 'depends on',
+          // Remove edge labels to reduce clutter
           'text-background-color': '#fff',
           'text-background-opacity': 0.8,
           'text-background-padding': '2px',
@@ -195,6 +219,14 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
 
   // Check if we have data to show (after hooks!)
   const hasData = parsed && elements.length > 0;
+
+  // Calculate dynamic container height based on number of nodes
+  const containerHeight = useMemo(() => {
+    const nodeCount = elements.filter(el => el.data && el.data.type !== 'legend').length;
+    const minHeight = 400;
+    const calculatedHeight = Math.max(minHeight, Math.min(nodeCount * 60 + 200, 800));
+    return calculatedHeight;
+  }, [elements]);
 
   useEffect(() => {
     // If no container or no data, cleanup and return
@@ -218,17 +250,71 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
       userZoomingEnabled: true,
       boxSelectionEnabled: false,
       autoungrabify: true,
+      wheelSensitivity: 0.2, // Better zoom control
     });
 
+    // Try dagre layout first, fallback to other layouts
+    let layoutApplied = false;
     try {
       cyInstance.layout(layout as cytoscape.LayoutOptions).run();
+      layoutApplied = true;
     } catch (e) {
-      console.error('Layout failed:', e);
-      cyInstance.layout({ name: 'grid', fit: true } as any).run();
+      console.error('Dagre layout failed:', e);
+      // Try breadth-first layout as fallback
+      try {
+        cyInstance.layout({
+          name: 'breadthfirst',
+          fit: true,
+          padding: 50,
+          spacingFactor: 2.0, // Increased spacing
+          avoidOverlap: true,
+        }).run();
+        layoutApplied = true;
+      } catch (e2) {
+        console.error('Breadth-first layout failed:', e2);
+        // Try concentric layout
+        try {
+          cyInstance.layout({
+            name: 'concentric',
+            fit: true,
+            padding: 50,
+            spacingFactor: 1.5,
+            avoidOverlap: true,
+          }).run();
+          layoutApplied = true;
+        } catch (e3) {
+          console.error('Concentric layout failed:', e3);
+          // Final fallback to grid
+          cyInstance.layout({
+            name: 'grid',
+            fit: true,
+            padding: 50,
+            avoidOverlap: true,
+          }).run();
+          layoutApplied = true;
+        }
+      }
     }
 
-    cyInstance.center();
-    cyInstance.fit(undefined, 30);
+    if (layoutApplied) {
+      // Small delay to ensure layout is complete before centering
+      setTimeout(() => {
+        if (cyInstance && !cyInstance.destroyed()) {
+          cyInstance.center();
+          cyInstance.fit(undefined, 50);
+
+          // Ensure the graph is properly sized and visible
+          const extent = cyInstance.extent();
+          if (extent.w > 0 && extent.h > 0) {
+            // Graph has content, zoom to fit
+            cyInstance.fit(undefined, 50);
+          } else {
+            // No content, just center
+            cyInstance.center();
+          }
+        }
+      }, 100);
+    }
 
     if (proofId) {
       // Add click handlers for interactive exploration
@@ -286,15 +372,27 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
         }
       });
 
-      // Add legend in top-left corner with better positioning
-      const legendNodes = [
-        { data: { id: 'legend-theorem', label: 'Theorem', type: 'legend', color: '#3b82f6' }, position: { x: 100, y: 40 } },
-        { data: { id: 'legend-lemma', label: 'Lemma', type: 'legend', color: '#10b981' }, position: { x: 100, y: 70 } },
-        { data: { id: 'legend-definition', label: 'Definition', type: 'legend', color: '#8b5cf6' }, position: { x: 100, y: 100 } },
-        { data: { id: 'legend-proof', label: 'Current Proof', type: 'legend', color: '#f59e0b' }, position: { x: 100, y: 130 } },
-      ];
+      // Add legend dynamically positioned outside the graph area
+      // Wait for layout to complete before positioning legend
+      setTimeout(() => {
+        if (!cyInstance || cyInstance.destroyed()) return;
 
-      cyInstance.add(legendNodes);
+        const extent = cyInstance.extent();
+        const legendX = extent.x1 - 150; // Position to the left of the graph
+        const legendY = extent.y1 + 50; // Start near the top
+
+        const legendNodes = [
+          { data: { id: 'legend-theorem', label: 'Theorem', type: 'legend', color: '#3b82f6' }, position: { x: legendX, y: legendY } },
+          { data: { id: 'legend-lemma', label: 'Lemma', type: 'legend', color: '#10b981' }, position: { x: legendX, y: legendY + 30 } },
+          { data: { id: 'legend-definition', label: 'Definition', type: 'legend', color: '#8b5cf6' }, position: { x: legendX, y: legendY + 60 } },
+          { data: { id: 'legend-proof', label: 'Current Proof', type: 'legend', color: '#f59e0b' }, position: { x: legendX, y: legendY + 90 } },
+        ];
+
+        // Only add legend if it won't interfere with the graph
+        if (legendX > -200) { // Only show if there's space
+          cyInstance.add(legendNodes);
+        }
+      }, 200);
     }
 
     cyRef.current = cyInstance;
@@ -320,8 +418,12 @@ export default function ProofVisualization({ parsed, proofId }: ProofVisualizati
   return (
     <div
       ref={containerRef}
-      className="border border-gray-300 rounded-lg"
-      style={{ height: '500px', minHeight: '500px' }}
+      className="border border-gray-300 rounded-lg w-full"
+      style={{
+        height: `${containerHeight}px`,
+        minHeight: '400px',
+        maxHeight: '800px'
+      }}
     />
   );
 }
