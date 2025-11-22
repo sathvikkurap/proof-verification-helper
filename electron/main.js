@@ -6,6 +6,7 @@ const fs = require('fs');
 let mainWindow;
 let backendProcess;
 let frontendProcess;
+let ollamaProcess;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -52,6 +53,11 @@ function createWindow() {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
+        .status {
+          margin-top: 20px;
+          font-size: 14px;
+          opacity: 0.8;
+        }
       </style>
     </head>
     <body>
@@ -59,13 +65,30 @@ function createWindow() {
         <div class="spinner"></div>
         <h2>Starting Proof Verification Helper...</h2>
         <p>Please wait while we start the application</p>
+        <div class="status" id="status">Initializing AI system...</div>
       </div>
+      <script>
+        // Update status messages
+        const status = document.getElementById('status');
+        const messages = [
+          'Initializing AI system...',
+          'Starting Ollama service...',
+          'Loading AI models...',
+          'Starting backend services...',
+          'Preparing user interface...'
+        ];
+        let msgIndex = 0;
+        setInterval(() => {
+          msgIndex = (msgIndex + 1) % messages.length;
+          status.textContent = messages[msgIndex];
+        }, 2000);
+      </script>
     </body>
     </html>
   `));
 
-  // Start backend server
-  startBackend();
+  // Start Ollama first, then backend
+  startOllama();
 
   // Wait for backend, then load frontend
   let attempts = 0;
@@ -105,6 +128,49 @@ function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+}
+
+function startOllama() {
+  console.log('Starting Ollama service...');
+
+  // Check if Ollama is available
+  const { exec } = require('child_process');
+  exec('ollama --version', (error) => {
+    if (error) {
+      console.log('Ollama not installed, skipping AI setup');
+      startBackend();
+      return;
+    }
+
+    // Start Ollama
+    ollamaProcess = spawn('ollama', ['serve'], {
+      shell: true,
+      stdio: 'ignore',
+    });
+
+    console.log('Ollama process started');
+
+    // Wait for Ollama to be ready, then start backend
+    let attempts = 0;
+    const maxAttempts = 30; // 30 seconds
+
+    const checkOllama = setInterval(() => {
+      attempts++;
+      fetch('http://localhost:11434/api/tags')
+        .then(() => {
+          clearInterval(checkOllama);
+          console.log('Ollama is ready!');
+          startBackend();
+        })
+        .catch(() => {
+          if (attempts >= maxAttempts) {
+            clearInterval(checkOllama);
+            console.log('Ollama failed to start, proceeding without AI');
+            startBackend();
+          }
+        });
+    }, 1000);
   });
 }
 
@@ -171,7 +237,10 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  // Kill backend process
+  // Kill all processes
+  if (ollamaProcess) {
+    ollamaProcess.kill();
+  }
   if (backendProcess) {
     backendProcess.kill();
   }
@@ -185,6 +254,9 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  if (ollamaProcess) {
+    ollamaProcess.kill();
+  }
   if (backendProcess) {
     backendProcess.kill();
   }

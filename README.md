@@ -42,18 +42,38 @@ Ready to test the system? Check out our [comprehensive Lean 4 examples](./LEAN_E
 
 ### For Non-Technical Users (Easiest)
 
-**Download the standalone application:**
+**Option 1: One-Click Setup (Recommended)**
+```bash
+# Clone and run everything automatically
+git clone https://github.com/sathvikkurap/proof-verification-helper.git
+cd proof-verification-helper
+./launch.sh
+```
+That's it! The script automatically installs dependencies, sets up Ollama AI, and starts the app!
+
+**Option 2: Download Standalone App**
 - macOS: Download `.dmg` file, drag to Applications, and launch
 - Windows: Download `.exe` installer, run and follow wizard
 - Linux: Download `.AppImage`, make executable, and run
 
-**That's it!** The app runs everything automatically - no configuration needed!
+**The app automatically includes AI setup** - no manual configuration needed!
 
-### Enhanced AI with Ollama (Optional)
+### AI Features (Automatic)
 
-Want even better AI suggestions? Set up local LLM support:
-- See [OLLAMA_SETUP.md](./OLLAMA_SETUP.md) for installation instructions
-- Completely optional - the app works great without it!
+🎉 **AI is now built-in and automatic!**
+- Ollama local LLM is installed and configured automatically
+- Enhanced proof suggestions with detailed explanations
+- Works offline and privately on your machine
+- Falls back gracefully if AI setup fails
+- No manual configuration needed!
+
+**The app automatically:**
+- Installs Ollama on first run
+- Downloads the recommended AI model (llama3.2)
+- Starts the AI service when you launch the app
+- Provides intelligent proof suggestions
+
+**For advanced users:** See [OLLAMA_SETUP.md](./OLLAMA_SETUP.md) for manual configuration options.
 
 ### For Developers
 
@@ -63,25 +83,35 @@ Want even better AI suggestions? Set up local LLM support:
 
 #### Installation
 
+**Quick Start (Recommended for everyone):**
+```bash
+git clone https://github.com/sathvikkurap/proof-verification-helper.git
+cd proof-verification-helper
+./launch.sh
+```
+This automatically installs everything, sets up Ollama AI, and starts the app!
+
+**Manual Installation (for developers):**
+
 1. Clone the repository:
 ```bash
 git clone https://github.com/sathvikkurap/proof-verification-helper.git
 cd proof-verification-helper
 ```
 
-2. Install dependencies:
+2. Install dependencies (includes automatic AI setup):
 ```bash
 npm run install:all
 ```
 
 3. Start the development servers:
-
 ```bash
 npm run dev
 ```
 
 This will start:
-- Backend API on http://localhost:5000
+- Ollama AI service (automatic)
+- Backend API on http://localhost:5001
 - Frontend on http://localhost:3000
 
 #### Building Standalone App

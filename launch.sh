@@ -1,33 +1,37 @@
 #!/bin/bash
 
-# Simple launcher for Proof Verification Helper
-# For non-technical users - just double-click or run this script
+# One-click launcher for Proof Verification Helper
+# This script automatically sets up everything and starts the application
 
-echo "🚀 Starting Proof Verification Helper..."
+echo "╔══════════════════════════════════════════════════════════════╗"
+echo "║              Proof Verification Helper Launcher             ║"
+echo "╚══════════════════════════════════════════════════════════════╝"
+echo ""
+echo "🚀 Starting Proof Verification Helper with AI support..."
 echo ""
 
-# Check if Node.js is installed
-if ! command -v node &> /dev/null; then
-    echo "❌ Node.js is not installed."
-    echo "Please install Node.js from https://nodejs.org"
+# Check if we're in the right directory
+if [ ! -f "package.json" ] || [ ! -d "frontend" ] || [ ! -d "backend" ]; then
+    echo "❌ Error: Please run this script from the proof-verification-helper directory"
     exit 1
 fi
 
-# Navigate to project directory
-cd "$(dirname "$0")"
+# Install all dependencies and setup Ollama
+echo "📦 Installing dependencies and setting up AI..."
+npm run install:all
 
-# Check if dependencies are installed
-if [ ! -d "node_modules" ] || [ ! -d "frontend/node_modules" ] || [ ! -d "backend/node_modules" ]; then
-    echo "📦 Installing dependencies (first time only, this may take a few minutes)..."
-    npm run install:all
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "⚠️  Some setup steps failed, but continuing anyway..."
+    echo "The app will work with basic AI suggestions."
     echo ""
 fi
 
 # Start the application
-echo "✅ Starting application..."
-echo "🌐 The app will open in your browser at http://localhost:3000"
-echo "⏳ Please wait 10-15 seconds for everything to start..."
-echo ""
-
+echo "🎯 Starting the application..."
 npm run dev
 
+echo ""
+echo "✅ Application started! Open http://localhost:3000 in your browser."
+echo ""
+echo "💡 Pro tip: The app automatically uses AI for proof suggestions when available!"
