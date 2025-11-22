@@ -2,23 +2,24 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-const loaderMapPlugin = () => ({
-  name: 'loader-map-fallback',
-  configureServer(server: { middlewares: any }) {
-    server.middlewares.use((req: any, res: any, next: () => void) => {
-      if (req.url?.endsWith('/loader.js.map')) {
-        res.statusCode = 200
-        res.setHeader('Content-Type', 'application/json')
-        res.end('{}')
-        return
-      }
-      next()
-    })
-  },
-})
-
 export default defineConfig({
-  plugins: [react(), loaderMapPlugin()],
+  plugins: [
+    react(),
+    // Plugin to handle loader.js.map 404s
+    {
+      name: 'resolve-loader-map',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url === '/loader.js.map') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end('{}'); // Return an empty JSON object for the source map
+          } else {
+            next();
+          }
+        });
+      },
+    },
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
