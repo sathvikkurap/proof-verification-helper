@@ -30,7 +30,7 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
-    "@types/cytoscape": "^3.19.25",
+    "@types/cytoscape": "^3.31.0",
     "@types/dagre": "^0.7.52",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
